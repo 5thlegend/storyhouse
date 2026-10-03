@@ -1,0 +1,81 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  /* Warm paper background with a soft lamp glow */
+  background:
+    radial-gradient(1200px 700px at 50% -10%, #fbf4e6 0%, rgba(251, 244, 230, 0) 60%),
+    linear-gradient(180deg, #f6ecd9 0%, #efe3cb 100%);
+  background-attachment: fixed;
+  color: #2c2016;
+  font-family: Georgia, Cambria, 'Times New Roman', serif;
+  -webkit-font-smoothing: antialiased;
+  /* Elderly-friendly base size */
+  font-size: 18px;
+  line-height: 1.6;
+}
+
+/* Subtle paper grain */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.04;
+  background-image: radial-gradient(#4a3620 1px, transparent 1px);
+  background-size: 22px 22px;
+  z-index: 0;
+}
+
+@layer components {
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-2xl px-6 py-4 text-lg font-sans font-semibold transition
+      focus:outline-none focus-visible:ring-4 focus-visible:ring-gold/60;
+  }
+  .btn-primary {
+    @apply btn bg-cocoa text-linen shadow-warm hover:bg-ink;
+  }
+  .btn-ghost {
+    @apply btn border-2 border-cocoa/30 bg-linen/60 text-cocoa hover:border-cocoa/60;
+  }
+  .card {
+    @apply rounded-3xl border border-cocoa/10 bg-linen/80 p-6 shadow-warm backdrop-blur-sm;
+  }
+  .chip {
+    @apply inline-flex items-center gap-1 rounded-full border border-cocoa/15 bg-cream px-3 py-1 text-sm font-sans text-umber;
+  }
+}
+
+/* Respect reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
+/* Presence orb breathing */
+@keyframes breathe {
+  0%, 100% { transform: scale(1); opacity: 0.85; }
+  50% { transform: scale(1.06); opacity: 1; }
+}
+@keyframes ripple {
+  0% { transform: scale(0.9); opacity: 0.7; }
+  100% { transform: scale(1.8); opacity: 0; }
+}
+.animate-breathe { animation: breathe 4s ease-in-out infinite; }
+.animate-ripple { animation: ripple 2.2s ease-out infinite; }

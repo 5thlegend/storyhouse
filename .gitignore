@@ -1,0 +1,39 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Build output
+dist/
+build/
+*.tsbuildinfo
+
+# Environment / secrets
+.env
+.env.local
+.env.*.local
+
+# ===== PRIVATE FAMILY DATA — NEVER COMMIT =====
+# The Memory Vault is user-owned. Source code is open; memories are not.
+data/
+*.db
+*.db-*
+*.sqlite
+*.sqlite3
+uploads/
+audio/
+private/
+exports/
+generated/
+# (Fictional demo seed data lives in server/src/seed and IS committed.)
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

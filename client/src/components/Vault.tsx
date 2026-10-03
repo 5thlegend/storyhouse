@@ -1,0 +1,73 @@
+import { useEffect, useState } from 'react';
+import { api } from '../api';
+import type { VaultStats } from '../types';
+
+function Stat({ n, label, icon }: { n: number; label: string; icon: string }) {
+  return (
+    <div className="card flex flex-col items-center py-5 text-center">
+      <span className="text-3xl" aria-hidden>
+        {icon}
+      </span>
+      <span className="mt-1 font-serif text-4xl text-cocoa">{n}</span>
+      <span className="font-sans text-umber">{label}</span>
+    </div>
+  );
+}
+
+export function Vault() {
+  const [stats, setStats] = useState<VaultStats | null>(null);
+
+  useEffect(() => {
+    api.vault().then((r) => setStats(r.stats));
+  }, []);
+
+  return (
+    <section className="mx-auto max-w-3xl px-4 pb-10 pt-8">
+      <header className="mb-6 text-center">
+        <h1 className="font-serif text-4xl text-cocoa">Memory Vault</h1>
+        <p className="mt-2 font-serif text-xl text-umber/80">
+          This archive belongs to the family — not to any AI company.
+        </p>
+      </header>
+
+      {stats && (
+        <div className="mb-8 grid grid-cols-2 gap-4 sm:grid-cols-3">
+          <Stat n={stats.memories} label="Memories" icon="📖" />
+          <Stat n={stats.people} label="People" icon="👤" />
+          <Stat n={stats.places} label="Places" icon="📍" />
+          <Stat n={stats.recipes} label="Recipes" icon="🍽️" />
+          <Stat n={stats.unfinished} label="Unfinished" icon="…" />
+          <Stat n={stats.artifacts} label="Artworks" icon="🖼️" />
+        </div>
+      )}
+
+      <div className="card mb-6">
+        <h3 className="mb-3 font-serif text-2xl text-cocoa">Your archive, your ownership</h3>
+        <p className="mb-4 text-ink/90">
+          Storyhouse runs its intelligence on an <strong>open-weight model</strong>, and the Memory
+          Vault is a plain database you can export and keep forever. Download everything — in her own
+          words — any time.
+        </p>
+        <div className="flex flex-wrap gap-3">
+          <a className="btn-primary" href={api.exportUrl} download>
+            ⬇ Export archive (JSON)
+          </a>
+          <a className="btn-ghost" href={api.exportMarkdownUrl} download>
+            ⬇ Export as storybook (Markdown)
+          </a>
+        </div>
+      </div>
+
+      <div className="card">
+        <h3 className="mb-3 font-serif text-2xl text-cocoa">Privacy &amp; honesty</h3>
+        <ul className="space-y-2 text-ink/90">
+          <li>🔒 Memories are stored locally and never used to train any model.</li>
+          <li>🎙️ The microphone only listens when you tap it. Nothing is recorded in secret.</li>
+          <li>🧭 Every memory shows where it came from — her words, an estimate, or an AI inference.</li>
+          <li>🖼️ AI-made images are always labeled as interpretations, never as real photographs.</li>
+          <li>👪 Family can read and export; the archive is never locked away from them.</li>
+        </ul>
+      </div>
+    </section>
+  );
+}
