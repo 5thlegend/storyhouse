@@ -24,6 +24,15 @@ export class MockProvider implements AIProvider {
     return `I'm here with you. (The conversation model is offline right now — I'll still keep whatever you'd like to share.)`;
   }
 
+  async *converseStream(
+    history: ChatTurn[],
+    context: RetrievedContext,
+  ): AsyncGenerator<string> {
+    const full = await this.converse(history, context);
+    // Emit in small chunks so the UI still animates.
+    for (const word of full.split(/(\s+)/)) yield word;
+  }
+
   async extractMemory(transcript: string): Promise<ExtractedMemory> {
     const words = transcript.trim().split(/\s+/);
     const worthKeeping = words.length >= 8; // conservative heuristic only

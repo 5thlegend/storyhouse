@@ -28,6 +28,13 @@ export interface AIProvider {
     noveltyHint?: string | null,
   ): Promise<string>;
 
+  /** Optional streaming variant — yields reply text chunks as they are generated. */
+  converseStream?(
+    history: ChatTurn[],
+    context: RetrievedContext,
+    noveltyHint?: string | null,
+  ): AsyncGenerator<string>;
+
   /** Turn a passage of Grandma's words into a structured, provenance-safe memory. */
   extractMemory(transcript: string): Promise<ExtractedMemory>;
 

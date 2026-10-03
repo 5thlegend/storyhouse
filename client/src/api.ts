@@ -23,6 +23,47 @@ export const api = {
       body: JSON.stringify({ text }),
     }).then(j<RespondResult>),
 
+  sendMessageStream: async (
+    conversationId: string,
+    text: string,
+    handlers: {
+      onMeta?: (m: { usedMemories: { id: string; title: string; score: number }[]; openModelOnline: boolean }) => void;
+      onToken: (chunk: string) => void;
+      onDone?: () => void;
+      onError?: () => void;
+    },
+  ) => {
+    const res = await fetch(`${BASE}/conversations/${conversationId}/messages/stream`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text }),
+    });
+    if (!res.ok || !res.body) throw new Error('stream failed');
+    const reader = res.body.getReader();
+    const dec = new TextDecoder();
+    let buf = '';
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buf += dec.decode(value, { stream: true });
+      const parts = buf.split('\n\n');
+      buf = parts.pop() ?? '';
+      for (const part of parts) {
+        const line = part.trim();
+        if (!line.startsWith('data:')) continue;
+        try {
+          const ev = JSON.parse(line.slice(5).trim());
+          if (ev.type === 'meta') handlers.onMeta?.(ev);
+          else if (ev.type === 'token') handlers.onToken(ev.text);
+          else if (ev.type === 'done') handlers.onDone?.();
+          else if (ev.type === 'error') handlers.onError?.();
+        } catch {
+          /* ignore */
+        }
+      }
+    }
+  },
+
   consolidate: (conversationId: string, text: string, force = false) =>
     fetch(`${BASE}/conversations/${conversationId}/consolidate`, {
       method: 'POST',

@@ -56,7 +56,7 @@ export class OllamaProvider implements AIProvider {
 
   private async chat(
     messages: OllamaMessage[],
-    opts: { json?: boolean; temperature?: number; timeoutMs?: number } = {},
+    opts: { json?: boolean; temperature?: number; timeoutMs?: number; numPredict?: number } = {},
   ): Promise<string> {
     const res = await fetch(`${config.ollamaBaseUrl}/api/chat`, {
       method: 'POST',
@@ -65,9 +65,12 @@ export class OllamaProvider implements AIProvider {
         model: config.aiModel,
         messages,
         stream: false,
-        keep_alive: '30m', // keep the model resident so turns stay fast (esp. on small VRAM)
+        keep_alive: '2h', // keep the model resident so turns stay fast (esp. on small VRAM)
         ...(opts.json ? { format: 'json' } : {}),
-        options: { temperature: opts.temperature ?? 0.7 },
+        options: {
+          temperature: opts.temperature ?? 0.7,
+          ...(opts.numPredict ? { num_predict: opts.numPredict } : {}),
+        },
       }),
       signal: AbortSignal.timeout(opts.timeoutMs ?? 120_000),
     });
@@ -76,11 +79,11 @@ export class OllamaProvider implements AIProvider {
     return data.message?.content ?? '';
   }
 
-  async converse(
+  private buildCompanionMessages(
     history: ChatTurn[],
     context: RetrievedContext,
     noveltyHint?: string | null,
-  ): Promise<string> {
+  ): OllamaMessage[] {
     const system =
       COMPANION_SYSTEM +
       '\n\n' +
@@ -88,13 +91,64 @@ export class OllamaProvider implements AIProvider {
       (noveltyHint
         ? `\n\nGENTLE DIRECTION (optional, only if it fits naturally): ${noveltyHint}`
         : '');
-
-    const messages: OllamaMessage[] = [
+    return [
       { role: 'system', content: system },
       ...history.map((t) => ({ role: mapRole(t.role), content: t.text })),
     ];
-    const reply = await this.chat(messages, { temperature: 0.8 });
+  }
+
+  async converse(
+    history: ChatTurn[],
+    context: RetrievedContext,
+    noveltyHint?: string | null,
+  ): Promise<string> {
+    const messages = this.buildCompanionMessages(history, context, noveltyHint);
+    // Cap length — the companion is meant to be brief, and shorter = faster.
+    const reply = await this.chat(messages, { temperature: 0.8, numPredict: 220 });
     return reply.trim();
+  }
+
+  /** Streaming companion reply — yields text chunks as the model generates them. */
+  async *converseStream(
+    history: ChatTurn[],
+    context: RetrievedContext,
+    noveltyHint?: string | null,
+  ): AsyncGenerator<string> {
+    const messages = this.buildCompanionMessages(history, context, noveltyHint);
+    const res = await fetch(`${config.ollamaBaseUrl}/api/chat`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: config.aiModel,
+        messages,
+        stream: true,
+        keep_alive: '2h',
+        options: { temperature: 0.8, num_predict: 220 },
+      }),
+      signal: AbortSignal.timeout(120_000),
+    });
+    if (!res.ok || !res.body) throw new Error(`Ollama stream failed: ${res.status}`);
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buf = '';
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buf += decoder.decode(value, { stream: true });
+      const lines = buf.split('\n');
+      buf = lines.pop() ?? '';
+      for (const line of lines) {
+        if (!line.trim()) continue;
+        try {
+          const j = JSON.parse(line);
+          const piece = j.message?.content;
+          if (piece) yield piece;
+          if (j.done) return;
+        } catch {
+          /* ignore partial line */
+        }
+      }
+    }
   }
 
   async extractMemory(transcript: string): Promise<ExtractedMemory> {
@@ -144,7 +198,7 @@ export class OllamaProvider implements AIProvider {
     const res = await fetch(`${config.ollamaBaseUrl}/api/embeddings`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model: config.embedModel, prompt: text, keep_alive: '30m' }),
+      body: JSON.stringify({ model: config.embedModel, prompt: text, keep_alive: '2h' }),
       signal: AbortSignal.timeout(45_000),
     });
     if (!res.ok) throw new Error(`Ollama embeddings failed: ${res.status}`);

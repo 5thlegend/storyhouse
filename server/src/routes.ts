@@ -7,6 +7,7 @@ import {
   startConversation,
   endConversation,
   respond,
+  respondStream,
   consolidate,
 } from './memory/pipeline.js';
 import {
@@ -66,6 +67,35 @@ api.post(
     res.json(result);
   }),
 );
+
+// Streaming reply (Server-Sent Events) — tokens appear as Gemma generates them.
+api.post('/conversations/:id/messages/stream', (req, res) => {
+  let text: string;
+  try {
+    text = messageSchema.parse(req.body).text;
+  } catch {
+    res.status(400).json({ error: 'Invalid message.' });
+    return;
+  }
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  res.setHeader('X-Accel-Buffering', 'no');
+  (res as any).flushHeaders?.();
+
+  (async () => {
+    try {
+      for await (const ev of respondStream(req.params.id, text)) {
+        res.write(`data: ${JSON.stringify(ev)}\n\n`);
+      }
+    } catch (err) {
+      console.error('[stream error]', (err as any)?.message ?? err);
+      res.write(`data: ${JSON.stringify({ type: 'error' })}\n\n`);
+    } finally {
+      res.end();
+    }
+  })();
+});
 
 api.post(
   '/conversations/:id/end',

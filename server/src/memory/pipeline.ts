@@ -86,6 +86,58 @@ export async function respond(
   };
 }
 
+// ---------- streaming variant of respond ----------
+export type StreamEvent =
+  | { type: 'meta'; usedMemories: { id: string; title: string; score: number }[]; openModelOnline: boolean }
+  | { type: 'token'; text: string }
+  | { type: 'done' }
+  | { type: 'error' };
+
+export async function* respondStream(
+  conversationId: string,
+  grandmaText: string,
+): AsyncGenerator<StreamEvent> {
+  saveMessage(conversationId, 'grandma', grandmaText);
+  const { provider, status } = await getProvider();
+
+  let used: { id: string; title: string; score: number }[] = [];
+  const context: RetrievedContext = { memories: [] };
+  try {
+    const qEmb = await provider.embed(grandmaText);
+    const hits = semanticSearch(qEmb, 4).filter((h) => h.score > 0.35);
+    used = hits.map((h) => ({ id: h.memory.id, title: h.memory.title, score: h.score }));
+    context.memories = hits.map((h) => ({
+      title: h.memory.title,
+      summary: h.memory.summary,
+      grandmas_words: h.memory.original_transcript.slice(0, 400),
+      when: h.memory.memory_date_text,
+      confidence: h.memory.confidence,
+    }));
+  } catch {
+    /* retrieval best-effort */
+  }
+
+  yield { type: 'meta', usedMemories: used, openModelOnline: status.openModelOnline };
+
+  const history = recentHistory(conversationId);
+  let full = '';
+  try {
+    if (provider.converseStream) {
+      for await (const tok of provider.converseStream(history, context)) {
+        full += tok;
+        yield { type: 'token', text: tok };
+      }
+    } else {
+      full = await provider.converse(history, context);
+      yield { type: 'token', text: full };
+    }
+    saveMessage(conversationId, 'storyhouse', full.trim());
+    yield { type: 'done' };
+  } catch {
+    yield { type: 'error' };
+  }
+}
+
 // ---------- consolidation: turn words into a structured memory ----------
 const ENTITY_FIELDS: { field: keyof ExtractedLike; kind: EntityKind }[] = [
   { field: 'people', kind: 'person' },

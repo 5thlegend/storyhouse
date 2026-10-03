@@ -15,6 +15,7 @@ export function LivingRoom() {
   const [turns, setTurns] = useState<Turn[]>([]);
   const [draft, setDraft] = useState('');
   const [busy, setBusy] = useState(false);
+  const [streamingText, setStreamingText] = useState('');
   const [saveOffer, setSaveOffer] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -29,7 +30,7 @@ export function LivingRoom() {
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
-  }, [turns, saveOffer]);
+  }, [turns, saveOffer, streamingText]);
 
   // Keep presence in sync with speaking state.
   useEffect(() => {
@@ -45,21 +46,40 @@ export function LivingRoom() {
     setDraft('');
     setTurns((t) => [...t, { role: 'grandma', text }]);
     setBusy(true);
+    setStreamingText('');
     setPresence('processing');
+    let full = '';
     try {
-      const res = await api.sendMessage(conversationId, text);
-      setTurns((t) => [...t, { role: 'storyhouse', text: res.reply }]);
-      // Offer to keep anything that sounds like a real story (8+ words).
-      if (text.trim().split(/\s+/).length >= 8) setSaveOffer(text);
-      if (!muted && speech.ttsSupported) speech.speak(res.reply);
-    } catch (e: any) {
+      await api.sendMessageStream(conversationId, text, {
+        onToken: (chunk) => {
+          full += chunk;
+          setStreamingText(full);
+          setPresence('speaking');
+        },
+        onDone: () => {
+          setTurns((t) => [...t, { role: 'storyhouse', text: full.trim() }]);
+          setStreamingText('');
+          // Offer to keep anything that sounds like a real story (8+ words).
+          if (text.trim().split(/\s+/).length >= 8) setSaveOffer(text);
+          if (!muted && speech.ttsSupported && full.trim()) speech.speak(full.trim());
+        },
+        onError: () => {
+          setTurns((t) => [
+            ...t,
+            {
+              role: 'storyhouse',
+              text: "I'm sorry — I had trouble just then. Your stories are still safe. Shall we try again?",
+            },
+          ]);
+          setStreamingText('');
+        },
+      });
+    } catch {
       setTurns((t) => [
         ...t,
-        {
-          role: 'storyhouse',
-          text: "I'm sorry — I had trouble just then. Your stories are still safe. Shall we try again?",
-        },
+        { role: 'storyhouse', text: "I'm sorry — I had trouble reaching the companion just now." },
       ]);
+      setStreamingText('');
     } finally {
       setBusy(false);
     }
@@ -150,7 +170,15 @@ export function LivingRoom() {
             </p>
           </div>
         )}
-        {busy && (
+        {streamingText && (
+          <div className="flex justify-start">
+            <p className="max-w-[85%] rounded-3xl border border-cocoa/10 bg-cream px-5 py-3 text-lg text-ink">
+              {streamingText}
+              <span className="ml-0.5 animate-pulse">▍</span>
+            </p>
+          </div>
+        )}
+        {busy && !streamingText && (
           <div className="flex justify-start">
             <p className="rounded-3xl border border-cocoa/10 bg-cream px-5 py-3 text-lg text-umber">
               <span className="animate-pulse">Storyhouse is thinking…</span>
