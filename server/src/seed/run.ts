@@ -17,7 +17,14 @@ export async function ensureSeed(): Promise<void> {
 }
 
 export async function seedMargaret(): Promise<void> {
-  const { provider } = await getProvider();
+  const { provider, status } = await getProvider();
+  if (!status.openModelOnline) {
+    console.warn(
+      '  ⚠️  Open model is OFFLINE during seed — memory embeddings will be low-quality\n' +
+        '      fallback vectors and semantic search will not work well. Start Ollama and\n' +
+        '      re-run `npm run seed` once it is up for real embeddings.',
+    );
+  }
 
   for (const s of MARGARET) {
     let embedding: number[] | null = null;

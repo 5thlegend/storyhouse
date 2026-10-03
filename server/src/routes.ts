@@ -49,6 +49,19 @@ api.get(
   }),
 );
 
+// Warm the models into VRAM (called by the client on load so the first real
+// turn isn't a cold start). Returns immediately; warming continues server-side.
+api.post(
+  '/warmup',
+  wrap(async (_req, res) => {
+    const { provider, status } = await getProvider();
+    if (status.openModelOnline && 'warmup' in provider) {
+      void (provider as any).warmup().catch(() => {});
+    }
+    res.json({ warming: status.openModelOnline });
+  }),
+);
+
 // ---------- conversations ----------
 api.post(
   '/conversations',

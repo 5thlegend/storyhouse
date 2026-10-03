@@ -13,6 +13,8 @@ async function j<T>(res: Response): Promise<T> {
 export const api = {
   health: () => fetch(`${BASE}/health`).then(j<Health>),
 
+  warmup: () => fetch(`${BASE}/warmup`, { method: 'POST' }).then(j<{ warming: boolean }>),
+
   startConversation: () =>
     fetch(`${BASE}/conversations`, { method: 'POST' }).then(j<{ id: string }>),
 

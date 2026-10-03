@@ -37,6 +37,9 @@ export default function App() {
 
   useEffect(() => {
     api.health().then(setHealth).catch(() => setHealth(null));
+    // Warm the model into VRAM as soon as the app opens, so the first
+    // conversation turn is fast (fire-and-forget).
+    api.warmup().catch(() => {});
   }, [setHealth]);
 
   return (

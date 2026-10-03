@@ -31,7 +31,7 @@ function saveMessage(conversationId: string, role: ChatTurn['role'], text: strin
     .run(cryptoId('msg'), conversationId, role, text, nowIso());
 }
 
-function recentHistory(conversationId: string, limit = 12): ChatTurn[] {
+function recentHistory(conversationId: string, limit = 8): ChatTurn[] {
   const rows = getDb()
     .prepare(
       `SELECT role, text FROM conversation_messages
@@ -61,12 +61,12 @@ export async function respond(
   const context: RetrievedContext = { memories: [] };
   try {
     const qEmb = await provider.embed(grandmaText);
-    const hits = semanticSearch(qEmb, 4).filter((h) => h.score > 0.35);
+    const hits = semanticSearch(qEmb, 3).filter((h) => h.score > 0.35);
     used = hits.map((h) => ({ id: h.memory.id, title: h.memory.title, score: h.score }));
     context.memories = hits.map((h) => ({
       title: h.memory.title,
       summary: h.memory.summary,
-      grandmas_words: h.memory.original_transcript.slice(0, 400),
+      grandmas_words: h.memory.original_transcript.slice(0, 300),
       when: h.memory.memory_date_text,
       confidence: h.memory.confidence,
     }));
@@ -104,12 +104,12 @@ export async function* respondStream(
   const context: RetrievedContext = { memories: [] };
   try {
     const qEmb = await provider.embed(grandmaText);
-    const hits = semanticSearch(qEmb, 4).filter((h) => h.score > 0.35);
+    const hits = semanticSearch(qEmb, 3).filter((h) => h.score > 0.35);
     used = hits.map((h) => ({ id: h.memory.id, title: h.memory.title, score: h.score }));
     context.memories = hits.map((h) => ({
       title: h.memory.title,
       summary: h.memory.summary,
-      grandmas_words: h.memory.original_transcript.slice(0, 400),
+      grandmas_words: h.memory.original_transcript.slice(0, 300),
       when: h.memory.memory_date_text,
       confidence: h.memory.confidence,
     }));
