@@ -21,13 +21,24 @@ import {
 } from './memory/store.js';
 import { generateMemoryArt } from './art.js';
 import { streamStorybookPdf } from './pdf.js';
+import {
+  roleMiddleware,
+  readOnlyForFamily,
+  setFamilyCookie,
+  clearFamilyCookie,
+} from './auth.js';
 import type { Visibility } from './types.js';
 
 export const api = Router();
 
-// In demo mode, only FAMILY/PUBLIC memories are exposed (no PRIVATE leakage).
-function visibilityFilter(): Visibility[] | undefined {
-  return config.demoMode ? ['FAMILY', 'PUBLIC'] : undefined;
+// Attach the caller's role, then enforce read-only for the family role.
+api.use(roleMiddleware);
+api.use(readOnlyForFamily);
+
+// Family (and the public demo) only ever see FAMILY/PUBLIC memories — never PRIVATE.
+function visibilityFilter(req: any): Visibility[] | undefined {
+  const role = req?.role ?? 'owner';
+  return config.demoMode || role === 'family' ? ['FAMILY', 'PUBLIC'] : undefined;
 }
 
 function wrap(handler: (req: any, res: any) => Promise<void>) {
@@ -44,9 +55,43 @@ function wrap(handler: (req: any, res: any) => Promise<void>) {
 // ---------- health / status ----------
 api.get(
   '/health',
-  wrap(async (_req, res) => {
+  wrap(async (req, res) => {
     const { status } = await getProvider();
     res.json({ ok: true, demoMode: config.demoMode, ai: status });
+  }),
+);
+
+// ---------- family sharing (read-only) ----------
+api.get(
+  '/family/status',
+  wrap(async (req, res) => {
+    res.json({ role: (req as any).role ?? 'owner', sharingEnabled: !!config.familyPasscode });
+  }),
+);
+
+const unlockSchema = z.object({ passcode: z.string().min(1).max(200) });
+api.post(
+  '/family/unlock',
+  wrap(async (req, res) => {
+    if (!config.familyPasscode) {
+      res.status(400).json({ error: 'Family sharing is not enabled on this Storyhouse.' });
+      return;
+    }
+    const { passcode } = unlockSchema.parse(req.body);
+    if (passcode !== config.familyPasscode) {
+      res.status(401).json({ error: 'That passcode did not match.' });
+      return;
+    }
+    setFamilyCookie(res);
+    res.json({ role: 'family' });
+  }),
+);
+
+api.post(
+  '/family/logout',
+  wrap(async (_req, res) => {
+    clearFamilyCookie(res);
+    res.json({ role: 'owner' });
   }),
 );
 
@@ -54,7 +99,7 @@ api.get(
 // turn isn't a cold start). Returns immediately; warming continues server-side.
 api.post(
   '/warmup',
-  wrap(async (_req, res) => {
+  wrap(async (req, res) => {
     const { provider, status } = await getProvider();
     if (status.openModelOnline && 'warmup' in provider) {
       void (provider as any).warmup().catch(() => {});
@@ -66,7 +111,7 @@ api.post(
 // ---------- conversations ----------
 api.post(
   '/conversations',
-  wrap(async (_req, res) => {
+  wrap(async (req, res) => {
     const id = startConversation();
     res.json({ id });
   }),
@@ -140,9 +185,9 @@ api.post(
 // ---------- memories ----------
 api.get(
   '/memories',
-  wrap(async (_req, res) => {
+  wrap(async (req, res) => {
     const memories = listMemories({
-      visibility: visibilityFilter(),
+      visibility: visibilityFilter(req),
       status: ['saved', 'unfinished'],
     });
     res.json({ memories });
@@ -240,8 +285,8 @@ api.post(
 // ---------- timeline ----------
 api.get(
   '/timeline',
-  wrap(async (_req, res) => {
-    const memories = listMemories({ visibility: visibilityFilter(), status: ['saved', 'unfinished'] });
+  wrap(async (req, res) => {
+    const memories = listMemories({ visibility: visibilityFilter(req), status: ['saved', 'unfinished'] });
     const buckets: Record<string, { id: string; title: string; when: string | null }[]> = {};
     for (const m of memories) {
       let decade = 'Undated';
@@ -271,8 +316,9 @@ api.get(
     let results: { id: string; title: string; summary: string; score: number }[] = [];
     try {
       const emb = await provider.embed(q);
+      const vis = visibilityFilter(req);
       results = semanticSearch(emb, 8)
-        .filter((h) => !config.demoMode || ['FAMILY', 'PUBLIC'].includes(h.memory.visibility))
+        .filter((h) => !vis || vis.includes(h.memory.visibility as any))
         .map((h) => ({
           id: h.memory.id,
           title: h.memory.title,
@@ -289,15 +335,15 @@ api.get(
 // ---------- vault stats + export ----------
 api.get(
   '/vault',
-  wrap(async (_req, res) => {
+  wrap(async (req, res) => {
     res.json({ stats: vaultStats(), demoMode: config.demoMode });
   }),
 );
 
 api.post(
   '/export',
-  wrap(async (_req, res) => {
-    const memories = listMemories({ visibility: visibilityFilter() }).map((m) => getMemory(m.id)!);
+  wrap(async (req, res) => {
+    const memories = listMemories({ visibility: visibilityFilter(req) }).map((m) => getMemory(m.id)!);
     const archive = {
       storyhouse_archive_version: 1,
       exported_at: nowIso(),
@@ -315,8 +361,8 @@ api.post(
 // PDF storybook export — her words + embedded memory art, family-owned.
 api.get(
   '/export/pdf',
-  wrap(async (_req, res) => {
-    const memories = listMemories({ visibility: visibilityFilter() }).map((m) => getMemory(m.id)!);
+  wrap(async (req, res) => {
+    const memories = listMemories({ visibility: visibilityFilter(req) }).map((m) => getMemory(m.id)!);
     const speaker = memories.find((m) => m.speaker)?.speaker || 'Our Family';
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', 'attachment; filename="storyhouse-storybook.pdf"');
@@ -332,8 +378,8 @@ api.get(
 // Markdown export (human-readable storybook preview).
 api.get(
   '/export/markdown',
-  wrap(async (_req, res) => {
-    const memories = listMemories({ visibility: visibilityFilter() });
+  wrap(async (req, res) => {
+    const memories = listMemories({ visibility: visibilityFilter(req) });
     let md = `# Storyhouse Archive\n\n_Exported ${nowIso()}_\n\n`;
     for (const m of memories) {
       md += `## ${m.title}\n\n`;

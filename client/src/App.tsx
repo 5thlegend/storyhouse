@@ -32,23 +32,52 @@ function Header() {
   );
 }
 
+function FamilyBanner() {
+  const { setAccess, setView } = useApp();
+  async function leave() {
+    try {
+      await api.familyLogout();
+    } catch {
+      /* ignore */
+    }
+    setAccess('owner', true);
+    setView('living-room');
+  }
+  return (
+    <div className="flex shrink-0 items-center justify-center gap-3 bg-plum/90 px-4 py-1.5 text-center font-sans text-xs font-semibold text-linen sm:text-sm">
+      <span>👪 Family View — read-only. Grandma’s Living Room &amp; recording stay private to her.</span>
+      <button onClick={leave} className="underline underline-offset-2">
+        Leave
+      </button>
+    </div>
+  );
+}
+
 export default function App() {
-  const { view, health, setHealth, selectedMemoryId } = useApp();
+  const { view, health, setHealth, selectedMemoryId, role, setAccess, setView } = useApp();
 
   useEffect(() => {
     api.health().then(setHealth).catch(() => setHealth(null));
-    // Warm the model into VRAM as soon as the app opens, so the first
-    // conversation turn is fast (fire-and-forget).
-    api.warmup().catch(() => {});
+    api
+      .familyStatus()
+      .then((s) => {
+        setAccess(s.role, s.sharingEnabled);
+        if (s.role === 'family') setView('library'); // the Living Room is owner-only
+        else api.warmup().catch(() => {}); // only the owner needs the model warmed
+      })
+      .catch(() => api.warmup().catch(() => {}));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [setHealth]);
 
   return (
     <div className="relative z-10 flex h-[100dvh] flex-col overflow-hidden">
-      {health?.demoMode && <DemoBanner />}
+      {role === 'family' && <FamilyBanner />}
+      {health?.demoMode && role !== 'family' && <DemoBanner />}
       <Header />
 
       <main className="min-h-0 flex-1">
-        {view === 'living-room' && <LivingRoom />}
+        {view === 'living-room' && role !== 'family' && <LivingRoom />}
+        {view === 'living-room' && role === 'family' && <MemoryLibrary />}
         {view === 'library' && <MemoryLibrary />}
         {view === 'gallery' && <Gallery />}
         {view === 'timeline' && <Timeline />}

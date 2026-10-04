@@ -25,6 +25,12 @@ interface AppState {
   muted: boolean; // privacy: microphone muted
   setMuted: (m: boolean) => void;
 
+  // Access role. 'owner' = the person on the device (full access).
+  // 'family' = read-only viewer (no Living Room, no editing).
+  role: 'owner' | 'family';
+  sharingEnabled: boolean;
+  setAccess: (role: 'owner' | 'family', sharingEnabled: boolean) => void;
+
   selectedMemoryId: string | null;
   openMemory: (id: string | null) => void;
 }
@@ -41,6 +47,10 @@ export const useApp = create<AppState>((set) => ({
 
   muted: false,
   setMuted: (muted) => set({ muted }),
+
+  role: 'owner',
+  sharingEnabled: false,
+  setAccess: (role, sharingEnabled) => set({ role, sharingEnabled }),
 
   selectedMemoryId: null,
   openMemory: (selectedMemoryId) => set({ selectedMemoryId }),

@@ -15,6 +15,19 @@ export const api = {
 
   warmup: () => fetch(`${BASE}/warmup`, { method: 'POST' }).then(j<{ warming: boolean }>),
 
+  familyStatus: () =>
+    fetch(`${BASE}/family/status`).then(j<{ role: 'owner' | 'family'; sharingEnabled: boolean }>),
+
+  familyUnlock: (passcode: string) =>
+    fetch(`${BASE}/family/unlock`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ passcode }),
+    }).then(j<{ role: string }>),
+
+  familyLogout: () =>
+    fetch(`${BASE}/family/logout`, { method: 'POST' }).then(j<{ role: string }>),
+
   startConversation: () =>
     fetch(`${BASE}/conversations`, { method: 'POST' }).then(j<{ id: string }>),
 

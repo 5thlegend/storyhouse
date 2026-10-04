@@ -4,7 +4,7 @@ import { useApp } from '../store';
 import type { Memory } from '../types';
 
 export function MemoryDetail({ id }: { id: string }) {
-  const { openMemory } = useApp();
+  const { openMemory, role } = useApp();
   const [mem, setMem] = useState<Memory | null>(null);
   const [makingArt, setMakingArt] = useState(false);
 
@@ -136,7 +136,7 @@ export function MemoryDetail({ id }: { id: string }) {
         </div>
 
         <div className="flex flex-wrap gap-3">
-          {(mem.artifacts?.length ?? 0) === 0 && (
+          {role !== 'family' && (mem.artifacts?.length ?? 0) === 0 && (
             <button className="btn-ghost !py-3 !text-base" onClick={makeArt} disabled={makingArt}>
               {makingArt ? 'Creating…' : '🖼️ Make a visual interpretation'}
             </button>

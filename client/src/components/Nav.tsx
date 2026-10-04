@@ -9,14 +9,15 @@ const ROOMS: { id: View; label: string; icon: string }[] = [
 ];
 
 export function Nav() {
-  const { view, setView } = useApp();
+  const { view, setView, role } = useApp();
+  const rooms = role === 'family' ? ROOMS.filter((r) => r.id !== 'living-room') : ROOMS;
   return (
     <nav
       className="sticky bottom-0 z-20 w-full border-t border-cocoa/10 bg-linen/90 backdrop-blur md:static md:border-t-0"
       aria-label="Rooms of the house"
     >
       <ul className="mx-auto flex max-w-3xl items-stretch justify-between gap-1 px-2 py-2">
-        {ROOMS.map((r) => {
+        {rooms.map((r) => {
           const activeView = view === r.id;
           return (
             <li key={r.id} className="flex-1">

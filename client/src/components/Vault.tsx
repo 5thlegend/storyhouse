@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { api } from '../api';
+import { useApp } from '../store';
 import type { VaultStats } from '../types';
 
 function Stat({ n, label, icon }: { n: number; label: string; icon: string }) {
@@ -15,11 +16,23 @@ function Stat({ n, label, icon }: { n: number; label: string; icon: string }) {
 }
 
 export function Vault() {
+  const { role, sharingEnabled } = useApp();
   const [stats, setStats] = useState<VaultStats | null>(null);
 
   useEffect(() => {
     api.vault().then((r) => setStats(r.stats));
   }, []);
+
+  async function openFamilyView() {
+    const code = window.prompt('Enter the family passcode to open the read-only Family View:');
+    if (!code) return;
+    try {
+      await api.familyUnlock(code);
+      window.location.reload();
+    } catch {
+      window.alert('That passcode did not match.');
+    }
+  }
 
   return (
     <section className="mx-auto h-full max-w-3xl overflow-y-auto px-4 pb-6 pt-4">
@@ -60,6 +73,31 @@ export function Vault() {
           </a>
         </div>
       </div>
+
+      {role !== 'family' && (
+        <div className="card mb-6">
+          <h3 className="mb-3 font-serif text-2xl text-cocoa">Family sharing</h3>
+          {sharingEnabled ? (
+            <>
+              <p className="mb-4 text-ink/90">
+                Family can open a <strong>read-only Family View</strong> — the Library, Gallery,
+                Timeline and Vault — with the family passcode. Grandma’s <strong>Living Room
+                conversation, microphone, and editing stay private to her</strong>, and anything
+                marked private is never shown. It all runs on this device; nothing is uploaded.
+              </p>
+              <button className="btn-ghost" onClick={openFamilyView}>
+                👪 Open Family View (read-only)
+              </button>
+            </>
+          ) : (
+            <p className="text-ink/90">
+              Family sharing is currently <strong>off</strong>. To let family view the archive
+              read-only, set a <code>FAMILY_PASSCODE</code> on this device. Storage stays local —
+              on your home network, or privately over a Cloudflare Tunnel.
+            </p>
+          )}
+        </div>
+      )}
 
       <div className="card">
         <h3 className="mb-3 font-serif text-2xl text-cocoa">Privacy &amp; honesty</h3>

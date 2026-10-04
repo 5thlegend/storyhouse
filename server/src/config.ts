@@ -43,6 +43,14 @@ export const config = {
 
   // Demo mode — the public deployment MUST run in demo mode.
   demoMode: bool(process.env.DEMO_MODE, true),
+
+  // Family sharing (read-only). Empty = sharing disabled (owner-only, no login).
+  // When set, family members can unlock a READ-ONLY view (Library/Gallery/
+  // Timeline/Vault) with this passcode. The Living Room, mic, and all editing
+  // stay owner-only, and PRIVATE memories stay hidden from family.
+  familyPasscode: process.env.FAMILY_PASSCODE ?? '',
+  // Secret for signing the family session cookie (local default is fine).
+  sessionSecret: process.env.SESSION_SECRET ?? 'storyhouse-local-session-secret',
 } as const;
 
 export type AppConfig = typeof config;
