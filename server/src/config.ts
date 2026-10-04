@@ -1,10 +1,13 @@
-import 'dotenv/config';
+import dotenv from 'dotenv';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 // Repo root is two levels up from server/src
 const repoRoot = path.resolve(__dirname, '..', '..');
+
+// Load the repo-root .env regardless of the process working directory.
+dotenv.config({ path: path.resolve(repoRoot, '.env') });
 
 function bool(v: string | undefined, fallback: boolean): boolean {
   if (v === undefined) return fallback;
