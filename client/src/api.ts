@@ -111,4 +111,5 @@ export const api = {
 
   exportUrl: `${BASE}/export`,
   exportMarkdownUrl: `${BASE}/export/markdown`,
+  exportPdfUrl: `${BASE}/export/pdf`,
 };

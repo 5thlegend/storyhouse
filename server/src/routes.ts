@@ -20,6 +20,7 @@ import {
   vaultStats,
 } from './memory/store.js';
 import { generateMemoryArt } from './art.js';
+import { streamStorybookPdf } from './pdf.js';
 import type { Visibility } from './types.js';
 
 export const api = Router();
@@ -308,6 +309,23 @@ api.post(
     res.setHeader('Content-Type', 'application/json');
     res.setHeader('Content-Disposition', 'attachment; filename="storyhouse-archive.json"');
     res.send(JSON.stringify(archive, null, 2));
+  }),
+);
+
+// PDF storybook export — her words + embedded memory art, family-owned.
+api.get(
+  '/export/pdf',
+  wrap(async (_req, res) => {
+    const memories = listMemories({ visibility: visibilityFilter() }).map((m) => getMemory(m.id)!);
+    const speaker = memories.find((m) => m.speaker)?.speaker || 'Our Family';
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', 'attachment; filename="storyhouse-storybook.pdf"');
+    audit('archive.export_pdf', undefined, undefined, `${memories.length} memories`);
+    streamStorybookPdf(res, {
+      title: `The Stories of ${speaker}`,
+      subtitle: 'A home for the stories that make us who we are.',
+      memories,
+    });
   }),
 );
 

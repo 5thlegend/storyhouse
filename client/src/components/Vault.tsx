@@ -49,11 +49,14 @@ export function Vault() {
           words — any time.
         </p>
         <div className="flex flex-wrap gap-3">
-          <a className="btn-primary" href={api.exportUrl} download>
-            ⬇ Export archive (JSON)
+          <a className="btn-primary" href={api.exportPdfUrl} download>
+            📖 Download storybook (PDF)
+          </a>
+          <a className="btn-ghost" href={api.exportUrl} download>
+            ⬇ Archive (JSON)
           </a>
           <a className="btn-ghost" href={api.exportMarkdownUrl} download>
-            ⬇ Export as storybook (Markdown)
+            ⬇ Markdown
           </a>
         </div>
       </div>
