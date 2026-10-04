@@ -26,11 +26,17 @@ export const config = {
   aiModel: process.env.AI_MODEL ?? 'gemma3:4b',
   embedModel: process.env.EMBED_MODEL ?? 'nomic-embed-text',
 
-  // Optional voice/image adapters
+  // Optional voice adapter
   elevenLabsKey: process.env.ELEVENLABS_API_KEY ?? '',
   elevenLabsVoiceId: process.env.ELEVENLABS_VOICE_ID ?? '',
-  imageProvider: (process.env.IMAGE_PROVIDER ?? 'mock') as 'mock' | 'external',
-  imageApiKey: process.env.IMAGE_API_KEY ?? '',
+
+  // Image generation (memory art). 'workers-ai' uses an OPEN-WEIGHT model
+  // (Flux.1 [schnell], Apache-2.0) hosted on Cloudflare Workers AI. 'mock' is
+  // the local SVG interpretation card. The conversational core stays local.
+  imageProvider: (process.env.IMAGE_PROVIDER ?? 'mock') as 'mock' | 'workers-ai',
+  imageModel: process.env.IMAGE_MODEL ?? '@cf/black-forest-labs/flux-1-schnell',
+  cfAccountId: process.env.CF_ACCOUNT_ID ?? '',
+  cfApiToken: process.env.CF_API_TOKEN ?? '',
 
   // Demo mode — the public deployment MUST run in demo mode.
   demoMode: bool(process.env.DEMO_MODE, true),

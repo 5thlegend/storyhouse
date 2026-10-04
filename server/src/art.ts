@@ -35,15 +35,55 @@ export async function generateMemoryArt(opts: {
   title: string;
   scene: string;
 }): Promise<MemoryArtResult> {
+  // Preferred path: an OPEN-WEIGHT image model (Flux.1 [schnell]) on Cloudflare
+  // Workers AI. Uses ONLY the details she described (§64). Falls back to the
+  // local SVG card if unconfigured or on error.
+  if (config.imageProvider === 'workers-ai' && config.cfAccountId && config.cfApiToken) {
+    try {
+      return await generateWithWorkersAI(opts);
+    } catch (err) {
+      console.warn('[art] Workers AI failed, falling back to SVG card:', (err as any)?.message);
+    }
+  }
+
+  return svgInterpretation(opts);
+}
+
+async function generateWithWorkersAI(opts: {
+  title: string;
+  scene: string;
+}): Promise<MemoryArtResult> {
+  const prompt =
+    `${opts.scene}. Warm nostalgic painterly illustration, soft golden afternoon light, ` +
+    `gentle and timeless, tender family-album feeling, fine brushwork. No text, no words, no watermark.`;
+
+  const url = `https://api.cloudflare.com/client/v4/accounts/${config.cfAccountId}/ai/run/${config.imageModel}`;
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${config.cfApiToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ prompt, steps: 6 }),
+    signal: AbortSignal.timeout(60_000),
+  });
+  if (!res.ok) throw new Error(`Workers AI ${res.status}: ${await res.text()}`);
+  const data = (await res.json()) as { result?: { image?: string }; success?: boolean };
+  const b64 = data.result?.image;
+  if (!b64) throw new Error('Workers AI returned no image');
+
+  return {
+    url: `data:image/jpeg;base64,${b64}`,
+    provider: `Cloudflare Workers AI (${config.imageModel}, open-weight)`,
+    prompt,
+    label: 'AI-generated visual interpretation of a memory (open-weight Flux.1)',
+    is_ai_generated: true,
+  };
+}
+
+function svgInterpretation(opts: { title: string; scene: string }): MemoryArtResult {
   const label = 'AI-generated visual interpretation of a memory';
   const prompt = opts.scene;
-
-  // Future: if IMAGE_PROVIDER === 'external' and a key exists, call a real model.
-  // (Kept honest: the conversational core stays open-source regardless.)
-  if (config.imageProvider === 'external' && config.imageApiKey) {
-    // Placeholder for a real provider integration.
-    // Falls through to the SVG card if not implemented in this build.
-  }
 
   const lines = wrap(opts.scene || opts.title);
   const tspans = lines
