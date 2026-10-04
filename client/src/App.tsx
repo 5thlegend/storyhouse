@@ -11,8 +11,8 @@ import { Vault } from './components/Vault';
 
 function DemoBanner() {
   return (
-    <div className="bg-ember/90 px-4 py-2 text-center font-sans text-sm font-semibold text-linen">
-      DEMO MODE — these are fictional memories of “Margaret.” No real family data is shown.
+    <div className="shrink-0 bg-ember/90 px-4 py-1.5 text-center font-sans text-xs font-semibold text-linen sm:text-sm">
+      DEMO MODE — fictional memories of “Margaret.” No real family data is shown.
     </div>
   );
 }
@@ -20,12 +20,12 @@ function DemoBanner() {
 function Header() {
   const { setView } = useApp();
   return (
-    <header className="px-4 pt-6 text-center">
-      <button onClick={() => setView('living-room')} className="inline-flex items-center gap-3">
-        <img src="/icon.svg" alt="" className="h-10 w-10" aria-hidden />
-        <span className="font-serif text-3xl tracking-wide text-cocoa">Storyhouse</span>
+    <header className="shrink-0 px-4 pt-2 text-center sm:pt-3">
+      <button onClick={() => setView('living-room')} className="inline-flex items-center gap-2">
+        <img src="/icon.svg" alt="" className="h-7 w-7 sm:h-9 sm:w-9" aria-hidden />
+        <span className="font-serif text-2xl tracking-wide text-cocoa sm:text-3xl">Storyhouse</span>
       </button>
-      <p className="mt-1 font-serif text-lg italic text-umber/80">
+      <p className="hidden font-serif text-base italic text-umber/80 sm:block">
         A home for the stories that make us who we are.
       </p>
     </header>
@@ -43,11 +43,11 @@ export default function App() {
   }, [setHealth]);
 
   return (
-    <div className="relative z-10 flex min-h-full flex-col">
+    <div className="relative z-10 flex h-[100dvh] flex-col overflow-hidden">
       {health?.demoMode && <DemoBanner />}
       <Header />
 
-      <main className="flex-1">
+      <main className="min-h-0 flex-1">
         {view === 'living-room' && <LivingRoom />}
         {view === 'library' && <MemoryLibrary />}
         {view === 'gallery' && <Gallery />}

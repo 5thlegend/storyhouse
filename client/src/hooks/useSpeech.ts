@@ -3,8 +3,14 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 // Voice layer via the browser's built-in Web Speech API — the free, keyless
 // default. (ElevenLabs / Whisper adapters can replace this later without
 // touching the open-source reasoning core.)
+//
+// Designed for an elderly storyteller: it does NOT send the moment she pauses.
+// It accumulates what she says and only sends after a longer silence, and it
+// keeps listening through natural pauses, so she can take her time.
 
 type SR = any;
+
+const SILENCE_MS = 3000; // how long a pause before we treat the thought as finished
 
 function getRecognition(): SR | null {
   const w = window as any;
@@ -34,13 +40,34 @@ export function useSpeech(onFinal: (text: string) => void): SpeechApi {
   const [listening, setListening] = useState(false);
   const [interim, setInterim] = useState('');
   const [speaking, setSpeaking] = useState(false);
+
   const onFinalRef = useRef(onFinal);
   onFinalRef.current = onFinal;
+
+  const bufferRef = useRef(''); // accumulated finalized speech, not yet sent
+  const silenceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const shouldListen = useRef(false); // user intends to be listening
 
   const sttSupported =
     typeof window !== 'undefined' &&
     !!((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition);
   const ttsSupported = typeof window !== 'undefined' && 'speechSynthesis' in window;
+
+  const flush = useCallback(() => {
+    if (silenceTimer.current) {
+      clearTimeout(silenceTimer.current);
+      silenceTimer.current = null;
+    }
+    const text = bufferRef.current.trim();
+    bufferRef.current = '';
+    setInterim('');
+    if (text) onFinalRef.current(text);
+  }, []);
+
+  const armSilence = useCallback(() => {
+    if (silenceTimer.current) clearTimeout(silenceTimer.current);
+    silenceTimer.current = setTimeout(() => flush(), SILENCE_MS);
+  }, [flush]);
 
   useEffect(() => {
     if (!sttSupported) return;
@@ -56,26 +83,47 @@ export function useSpeech(onFinal: (text: string) => void): SpeechApi {
         if (e.results[i].isFinal) finalText += t;
         else interimText += t;
       }
-      setInterim(interimText);
-      if (finalText.trim()) {
-        setInterim('');
-        onFinalRef.current(finalText.trim());
+      if (finalText) {
+        bufferRef.current = (bufferRef.current + ' ' + finalText).trim();
+      }
+      // Show everything captured so far so she can see it's listening.
+      setInterim((bufferRef.current + ' ' + interimText).trim());
+      // Any speech (final or interim) resets the silence countdown.
+      armSilence();
+    };
+
+    rec.onend = () => {
+      // Chrome stops recognition periodically; if she still wants to talk,
+      // restart so long pauses don't end the session.
+      if (shouldListen.current) {
+        try {
+          rec.start();
+        } catch {
+          /* already starting */
+        }
+      } else {
+        setListening(false);
       }
     };
-    rec.onend = () => setListening(false);
-    rec.onerror = () => setListening(false);
+    rec.onerror = () => {
+      /* keep shouldListen; onend will restart if appropriate */
+    };
 
     return () => {
+      shouldListen.current = false;
+      if (silenceTimer.current) clearTimeout(silenceTimer.current);
       try {
         rec.stop();
       } catch {
         /* noop */
       }
     };
-  }, [sttSupported]);
+  }, [sttSupported, armSilence]);
 
   const start = useCallback(() => {
     if (!recRef.current) return;
+    shouldListen.current = true;
+    bufferRef.current = '';
     try {
       recRef.current.start();
       setListening(true);
@@ -85,14 +133,15 @@ export function useSpeech(onFinal: (text: string) => void): SpeechApi {
   }, []);
 
   const stop = useCallback(() => {
-    if (!recRef.current) return;
+    shouldListen.current = false;
+    setListening(false);
+    flush(); // send whatever she said before stopping
     try {
-      recRef.current.stop();
+      recRef.current?.stop();
     } catch {
       /* noop */
     }
-    setListening(false);
-  }, []);
+  }, [flush]);
 
   const speak = useCallback(
     (text: string) => {
@@ -101,9 +150,10 @@ export function useSpeech(onFinal: (text: string) => void): SpeechApi {
       const u = new SpeechSynthesisUtterance(text);
       u.rate = 0.96;
       u.pitch = 1.0;
-      // Prefer a warm, natural English voice if available.
       const voices = window.speechSynthesis.getVoices();
-      const preferred = voices.find((v) => /en-US/.test(v.lang) && /female|Samantha|Aria|Jenny|Zira/i.test(v.name));
+      const preferred = voices.find(
+        (v) => /en-US/.test(v.lang) && /female|Samantha|Aria|Jenny|Zira/i.test(v.name),
+      );
       if (preferred) u.voice = preferred;
       u.onstart = () => setSpeaking(true);
       u.onend = () => setSpeaking(false);

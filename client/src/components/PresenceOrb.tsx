@@ -20,16 +20,15 @@ const COLORS: Record<PresenceState, string> = {
   private: 'from-cocoa/30 to-cocoa/20',
 };
 
-export function PresenceOrb({ state, size = 180 }: { state: PresenceState; size?: number }) {
+export function PresenceOrb({ state }: { state: PresenceState }) {
   const active = state === 'listening' || state === 'speaking' || state === 'processing';
   return (
-    <div className="relative flex flex-col items-center" aria-live="polite">
-      <div className="relative" style={{ width: size, height: size }}>
+    <div className="flex flex-col items-center" aria-live="polite">
+      {/* Responsive: smaller on phones, larger on desktop */}
+      <div className="relative h-24 w-24 sm:h-36 sm:w-36">
         {active && (
           <>
-            <span
-              className={`absolute inset-0 rounded-full bg-gradient-to-br ${COLORS[state]} animate-ripple`}
-            />
+            <span className={`absolute inset-0 rounded-full bg-gradient-to-br ${COLORS[state]} animate-ripple`} />
             <span
               className={`absolute inset-0 rounded-full bg-gradient-to-br ${COLORS[state]} animate-ripple`}
               style={{ animationDelay: '1.1s' }}
@@ -44,7 +43,7 @@ export function PresenceOrb({ state, size = 180 }: { state: PresenceState; size?
         <div className="absolute inset-[22%] rounded-full bg-linen/70 blur-sm" />
         <div className="absolute inset-[34%] rounded-full bg-linen/90" />
       </div>
-      <p className="mt-6 font-serif text-2xl text-cocoa" role="status">
+      <p className="mt-3 font-serif text-xl text-cocoa sm:mt-5 sm:text-2xl" role="status">
         {LABELS[state]}
       </p>
     </div>

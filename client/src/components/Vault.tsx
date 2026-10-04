@@ -22,7 +22,7 @@ export function Vault() {
   }, []);
 
   return (
-    <section className="mx-auto max-w-3xl px-4 pb-10 pt-8">
+    <section className="mx-auto h-full max-w-3xl overflow-y-auto px-4 pb-6 pt-4">
       <header className="mb-6 text-center">
         <h1 className="font-serif text-4xl text-cocoa">Memory Vault</h1>
         <p className="mt-2 font-serif text-xl text-umber/80">

@@ -120,29 +120,29 @@ export function LivingRoom() {
   }
 
   return (
-    <section className="mx-auto flex max-w-3xl flex-col items-center px-4 pb-6 pt-8">
-      {/* Presence */}
-      <PresenceOrb state={muted ? 'private' : presence} />
-
-      {/* Privacy state — always visible */}
-      <div className="mt-4 flex items-center gap-3">
-        <span
-          className={`chip ${muted ? 'border-ember/40 bg-ember/10 text-ember' : 'border-sage/40 bg-sage/10 text-sage'}`}
-        >
-          <span aria-hidden>{muted ? '🔇' : '🎙️'}</span>
-          {muted ? 'Microphone off (private)' : 'Microphone ready'}
-        </span>
-        {health && (
-          <span className="chip" title={health.ai.active}>
-            {health.ai.openModelOnline ? `🟢 ${health.ai.model}` : '🟡 AI offline — listening simply'}
+    <section className="mx-auto flex h-full max-w-3xl flex-col px-4">
+      {/* Presence + privacy state — always visible, compact */}
+      <div className="flex shrink-0 flex-col items-center pt-1">
+        <PresenceOrb state={muted ? 'private' : presence} />
+        <div className="mt-2 flex flex-wrap items-center justify-center gap-2">
+          <span
+            className={`chip ${muted ? 'border-ember/40 bg-ember/10 text-ember' : 'border-sage/40 bg-sage/10 text-sage'}`}
+          >
+            <span aria-hidden>{muted ? '🔇' : '🎙️'}</span>
+            {muted ? 'Mic off (private)' : 'Mic ready'}
           </span>
-        )}
+          {health && (
+            <span className="chip" title={health.ai.active}>
+              {health.ai.openModelOnline ? `🟢 ${health.ai.model}` : '🟡 AI offline'}
+            </span>
+          )}
+        </div>
       </div>
 
-      {/* Transcript */}
+      {/* Transcript — fills remaining height, scrolls internally */}
       <div
         ref={scrollRef}
-        className="mt-6 max-h-[38vh] w-full space-y-4 overflow-y-auto rounded-3xl bg-linen/40 p-4"
+        className="my-2 min-h-0 w-full flex-1 space-y-3 overflow-y-auto rounded-3xl bg-linen/40 p-3"
         aria-label="Conversation"
       >
         {turns.length === 0 && (
@@ -203,31 +203,32 @@ export function LivingRoom() {
       </div>
 
       {toast && (
-        <div className="mt-3 rounded-full bg-sage/20 px-5 py-2 font-sans text-sage">{toast}</div>
+        <div className="mx-auto mb-1 shrink-0 rounded-full bg-sage/20 px-4 py-1 font-sans text-sm text-sage">
+          {toast}
+        </div>
       )}
 
-      {/* Primary controls — large and obvious */}
-      <div className="mt-6 flex w-full flex-col items-center gap-4">
+      {/* Primary controls — compact so the whole screen fits with no page scroll */}
+      <div className="flex shrink-0 flex-col items-center gap-2 pb-2">
         <button
           onClick={toggleMic}
           disabled={muted || !speech.sttSupported}
           aria-pressed={speech.listening}
-          className={`flex h-28 w-28 items-center justify-center rounded-full text-5xl shadow-warm transition focus:outline-none focus-visible:ring-4 focus-visible:ring-gold/60 disabled:opacity-40 ${
+          className={`flex h-16 w-16 items-center justify-center rounded-full text-3xl shadow-warm transition focus:outline-none focus-visible:ring-4 focus-visible:ring-gold/60 disabled:opacity-40 sm:h-20 sm:w-20 sm:text-4xl ${
             speech.listening ? 'bg-ember text-linen' : 'bg-cocoa text-linen hover:bg-ink'
           }`}
           title={speech.sttSupported ? 'Tap to talk' : 'Voice input not available in this browser'}
         >
           {speech.listening ? '◼' : '🎙️'}
         </button>
-        <p className="font-sans text-umber">
+        <p className="font-sans text-xs text-umber sm:text-sm">
           {!speech.sttSupported
             ? 'Voice input isn’t available here — please type below.'
             : speech.listening
-              ? 'Listening… tap to stop'
+              ? 'Listening… take your time, then tap to finish'
               : 'Tap to talk'}
         </p>
 
-        {/* Text fallback (accessibility + unsupported browsers) */}
         <form
           className="flex w-full gap-2"
           onSubmit={(e) => {
@@ -240,18 +241,19 @@ export function LivingRoom() {
             onChange={(e) => setDraft(e.target.value)}
             placeholder="Or type here…"
             aria-label="Type your message"
-            className="flex-1 rounded-2xl border-2 border-cocoa/20 bg-linen px-4 py-3 text-lg focus:border-cocoa/50 focus:outline-none"
+            className="flex-1 rounded-2xl border-2 border-cocoa/20 bg-linen px-4 py-2.5 text-base focus:border-cocoa/50 focus:outline-none"
           />
-          <button type="submit" className="btn-primary" disabled={busy || !draft.trim()}>
+          <button type="submit" className="btn-primary !py-2.5" disabled={busy || !draft.trim()}>
             Send
           </button>
         </form>
 
-        <div className="flex gap-3">
-          <button className="btn-ghost !py-3 !text-base" onClick={toggleMute}>
-            {muted ? 'Turn microphone on' : 'Private (mute microphone)'}
-          </button>
-        </div>
+        <button
+          className="font-sans text-sm text-umber/70 underline-offset-2 hover:underline"
+          onClick={toggleMute}
+        >
+          {muted ? '🎙️ Turn microphone on' : '🔇 Private (mute microphone)'}
+        </button>
       </div>
     </section>
   );
