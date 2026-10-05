@@ -61,7 +61,7 @@ export async function respond(
   const context: RetrievedContext = { memories: [] };
   try {
     const qEmb = await provider.embed(grandmaText);
-    const hits = semanticSearch(qEmb, 3).filter((h) => h.score > 0.35);
+    const hits = semanticSearch(qEmb, 3).filter((h) => h.score > 0.62);
     used = hits.map((h) => ({ id: h.memory.id, title: h.memory.title, score: h.score }));
     context.memories = hits.map((h) => ({
       title: h.memory.title,
@@ -104,7 +104,7 @@ export async function* respondStream(
   const context: RetrievedContext = { memories: [] };
   try {
     const qEmb = await provider.embed(grandmaText);
-    const hits = semanticSearch(qEmb, 3).filter((h) => h.score > 0.35);
+    const hits = semanticSearch(qEmb, 3).filter((h) => h.score > 0.62);
     used = hits.map((h) => ({ id: h.memory.id, title: h.memory.title, score: h.score }));
     context.memories = hits.map((h) => ({
       title: h.memory.title,

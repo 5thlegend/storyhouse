@@ -17,7 +17,12 @@ function mapRole(role: ChatTurn['role']): OllamaRole {
 
 function buildContextBlock(ctx: RetrievedContext): string {
   if (!ctx.memories.length) {
-    return 'RETRIEVED MEMORIES: (none yet — you have no stored memories relevant to this. Do not invent any.)';
+    return (
+      'RETRIEVED MEMORIES: NONE.\n' +
+      'Her archive has nothing about what she just said. You do NOT know about this topic. ' +
+      'Do NOT invent, describe, or guess any people, places, trips, dates or details. ' +
+      "Gently tell her you don't have that one saved yet, and warmly invite her to tell you about it."
+    );
   }
   const lines = ctx.memories.map((m, i) => {
     const when = m.when ? ` (${m.when})` : '';
@@ -104,7 +109,7 @@ export class OllamaProvider implements AIProvider {
   ): Promise<string> {
     const messages = this.buildCompanionMessages(history, context, noveltyHint);
     // Cap length — the companion is meant to be brief, and shorter = faster.
-    const reply = await this.chat(messages, { temperature: 0.6, numPredict: 220 });
+    const reply = await this.chat(messages, { temperature: 0.2, numPredict: 220 });
     return reply.trim();
   }
 
@@ -123,7 +128,7 @@ export class OllamaProvider implements AIProvider {
         messages,
         stream: true,
         keep_alive: '2h',
-        options: { temperature: 0.6, num_predict: 220 },
+        options: { temperature: 0.2, num_predict: 220 },
       }),
       signal: AbortSignal.timeout(120_000),
     });
