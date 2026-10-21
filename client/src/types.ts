@@ -76,4 +76,71 @@ export interface VaultStats {
   unfinished: number;
   artifacts: number;
   audio: number;
+  photos: number;
+}
+
+// ---------- Grandma's House ----------
+
+export type Role = 'none' | 'grandma' | 'studio' | 'family';
+
+export interface Session {
+  role: Role;
+  demoMode: boolean;
+  configured: boolean;
+  familyViewEnabled: boolean;
+}
+
+export type PhotoKind = 'photo' | 'family_art' | 'ai_art';
+
+export interface Face {
+  id: string;
+  person_id: string;
+  name: string;
+  relation: string | null;
+  x: number;
+  y: number;
+  r: number;
+  voice_url: string | null;
+  voice_by: string | null;
+}
+
+export interface AlbumPhoto {
+  id: string;
+  url: string;
+  width: number | null;
+  height: number | null;
+  kind: PhotoKind;
+  caption: string;
+  when_text: string | null;
+  made_by: string | null;
+  is_ai_generated: boolean;
+  label: string | null;
+  voice: { url: string; by: string | null } | null;
+  faces: Face[];
+  status: 'draft' | 'published';
+  created_at: string;
+  published_at: string | null;
+  is_new: boolean;
+}
+
+export interface Person {
+  id: string;
+  name: string;
+  relation: string | null;
+  voice_url: string | null;
+  voice_by: string | null;
+  photo_count: number;
+}
+
+export interface TodayNote {
+  date: string;
+  visitors: string;
+  note: string;
+}
+
+export interface Device {
+  id: string;
+  label: string;
+  created_at: string;
+  last_seen_at: string | null;
 }

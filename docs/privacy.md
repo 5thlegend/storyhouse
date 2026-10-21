@@ -1,25 +1,49 @@
 # Privacy
 
-Storyhouse's default principle is **minimize data** and **keep it on the device**.
+Storyhouse's default principle is **minimize data** and **keep it in the family's hands**.
 
-## What leaves the device
-- **By default: nothing.** Gemma and the embedding model run locally via Ollama. Conversations and memories are processed and stored on the machine.
-- If an optional external voice/image provider is explicitly configured with a key, only the specific text/audio for that feature is sent to that provider, and it is disclosed in the UI and README. The **core conversational intelligence remains the open, local model** regardless.
+## Where the data lives
+- **Hosted (recommended for her iPad):** in the family's **own Cloudflare account** — D1 for the
+  Memory Vault and album details, R2 for photos, voice messages and art. Not in a third-party app's
+  account, and not with an AI company.
+- **Fully local:** run the Worker with `wrangler dev` and `AI_PROVIDER=ollama`; data, media and AI
+  then stay on that machine.
 
-## What is stored
-- The local SQLite **Memory Vault** (`data/storyhouse.db`), git-ignored.
-- No analytics. No tracking. Memory data is **never used to train any model**.
+## What reaches an AI model
+- The conversation model and embeddings are **open-weight models** (Gemma 4 + EmbeddingGemma on
+  Workers AI, or Gemma 3 + nomic-embed locally). Only the text needed for one request is sent:
+  her message, a few retrieved memories, or a passage to structure.
+- Memory art sends only the scene description to the open Flux.1 model.
+- Photos and family voice recordings are **never** sent to a model.
+- Memory data is **never used to train any model**. No analytics. No tracking.
+
+## Who can see what
+- **Nobody without a key.** A stranger who finds the URL sees only the lock screen; every API and
+  media request is checked on the server.
+- **Her iPad** sees only what the family has **published**. Drafts never reach her.
+- **Family View** (optional passcode) is read-only; memories marked PRIVATE are never shown.
+- Guessing is slowed down (10 failed passcodes or pairing codes per 15 minutes per IP).
+
+## Photos
+- Photos are resized and **re-encoded in the uploader's browser**, which strips all metadata —
+  including the GPS location phones embed — before anything is uploaded.
+- Media is served with `Cache-Control: private`, so shared caches never keep a copy. Her iPad keeps
+  a local copy so photos still open when the Wi-Fi drops.
+
+## Voices and honesty
+- Every voice message names who recorded it, and she is told ("A message from Ellie").
+- **Storyhouse never imitates or synthesizes a relative's voice.** When no recording exists, it reads
+  aloud in its own, clearly synthetic voice ("This is Ellie, your granddaughter").
+- AI-made art always carries a visible label: "Art made with AI by …". It can't be published without
+  saying who made it.
 
 ## Microphone
-- Listens **only when tapped**. No silent, always-on recording.
-- The privacy state is always visible; a prominent **mute** control is always available.
-
-## AI honesty
-- AI-generated images are always labeled as interpretations — never presented as real photographs.
-- Every memory shows its provenance (her words vs. an estimate vs. an AI inference).
+- Listens **only when tapped**. No silent, always-on recording. A prominent **mute** is always there.
 
 ## Family rights
-- Export the entire archive at any time (JSON or Markdown). Delete memories. The archive is never locked away from the family.
+- Export the entire archive any time (JSON, Markdown, or a PDF storybook). Delete memories and photos.
+  The archive is never locked away from the family.
 
-## Public demo
-- Runs on **fictional data only** (`DEMO_MODE=true`) so no real family memory is ever exposed.
+## Demos
+- Demo mode seeds **fictional data only** ("Margaret" and an illustrated, fictional family).
+  The real deployment runs with `DEMO_MODE=false`.

@@ -1,0 +1,52 @@
+// Storyhouse on Cloudflare — the family's own account, no third-party AI vendor.
+// One Worker serves Grandma's iPad app, the Family Studio, and the API.
+{
+  "name": "storyhouse",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-05-01",
+  "compatibility_flags": ["nodejs_compat"],
+
+  // The built React client. The Worker runs first only for the API and media,
+  // so every byte of family data passes the auth gate in src/auth.ts.
+  "assets": {
+    "directory": "../client/dist",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/api/*", "/media/*"]
+  },
+
+  // The Memory Vault + album metadata (SQLite). Replace database_id after
+  // `wrangler d1 create storyhouse` (see docs/deployment.md).
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "storyhouse",
+      "database_id": "00000000-0000-0000-0000-000000000000",
+      "migrations_dir": "migrations"
+    }
+  ],
+
+  // Photos, voice captions, and memory art.
+  "r2_buckets": [{ "binding": "MEDIA", "bucket_name": "storyhouse-media" }],
+
+  // Open-weight models on Workers AI (Gemma 4, EmbeddingGemma, Flux).
+  "ai": { "binding": "AI", "remote": true },
+
+  "vars": {
+    // workers-ai | ollama | mock
+    "AI_PROVIDER": "workers-ai",
+    "AI_MODEL": "@cf/google/gemma-4-26b-a4b-it",
+    "EMBED_MODEL": "@cf/google/embeddinggemma-300m",
+    "IMAGE_MODEL": "@cf/black-forest-labs/flux-1-schnell",
+    "OLLAMA_BASE_URL": "http://localhost:11434",
+    "OLLAMA_MODEL": "gemma3:4b",
+    "OLLAMA_EMBED_MODEL": "nomic-embed-text",
+    // The real deployment holds real family data, so demo mode is OFF here.
+    // Local dev turns it on in .dev.vars.
+    "DEMO_MODE": "false"
+  },
+  // Secrets (never in this file): STUDIO_PASSCODE, SESSION_SECRET, and optionally
+  // FAMILY_PASSCODE. Set them with `wrangler secret put <NAME>`.
+
+  "observability": { "enabled": true }
+}

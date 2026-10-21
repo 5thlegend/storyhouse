@@ -79,3 +79,13 @@ body::before {
 }
 .animate-breathe { animation: breathe 4s ease-in-out infinite; }
 .animate-ripple { animation: ripple 2.2s ease-out infinite; }
+
+/* Gentle crossfade between album photos (skipped with reduced motion). */
+@keyframes fadein {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}

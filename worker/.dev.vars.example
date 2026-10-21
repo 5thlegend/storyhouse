@@ -1,0 +1,9 @@
+# Local development only. Copy to .dev.vars (git-ignored) and change the values.
+# In production these are secrets: `npx wrangler secret put <NAME>`.
+DEMO_MODE=true
+STUDIO_PASSCODE=change-me-studio
+FAMILY_PASSCODE=change-me-family
+SESSION_SECRET=change-me-to-a-long-random-string
+
+# Fully offline: use Gemma 3 on this machine through Ollama instead of Workers AI.
+# AI_PROVIDER=ollama

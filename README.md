@@ -2,7 +2,7 @@
 
 ### A home for the stories that make us who we are.
 
-Storyhouse is a **local-first, voice-first AI companion and family memory archive**. It listens to an elderly loved one tell the stories of their life, remembers them, connects them across the decades, and preserves them in a structured, family-owned **Memory Vault** — all powered by an **open-weight Gemma model running locally**, so the most private memories a family has never leave the device.
+Storyhouse is a **local-first, voice-first AI companion and family memory archive**. It listens to an elderly loved one tell the stories of their life, remembers them, connects them across the decades, and preserves them in a structured, family-owned **Memory Vault** — all powered by **open-weight Gemma models** running in the family's own Cloudflare account (or entirely on one machine), so the most private memories a family has never go to an AI company.
 
 > _She spent 80 years collecting stories._
 > _We built somewhere for them to live._
@@ -33,6 +33,27 @@ I didn't want to build another chatbot. I wanted to build **somewhere her storie
 
 ---
 
+## Grandma's House — her iPad, and a studio for the family
+
+Her laptop can't come with her, but her iPad can. Storyhouse now runs in **the family's own
+Cloudflare account** (Workers + D1 + R2 + open models on Workers AI) and installs on her iPad as a
+Home Screen app. There are two sides to it:
+
+- **On her iPad:** a calm home screen with a **Today card** (the day, the date, who's visiting) and
+  **Family Photos**. One photo at a time, huge print, big arrows, Home always in the same corner.
+  **Tap a face to hear who it is.** Family members' own recorded voices play with their photos
+  ("Hi Grandma, it's me…"). There are no menus, no timers, no wrong taps, and nothing ever asks her
+  "do you remember?".
+- **The Family Studio** (passcode): upload photos and art (Higgsfield / Nano Banana / Flux pieces
+  included), tag faces, write large-print captions, record voice messages, set today's visitors, and
+  **publish to her iPad**. Drafts never reach her. AI art can't be published without saying who made
+  it, and she always sees "Art made with AI by …".
+
+Her iPad is paired once with a one-time code, so she never sees a login. Strangers who find the URL
+see only a lock screen. Setup steps: [docs/deployment.md](./docs/deployment.md).
+
+---
+
 ## Demo
 
 - **Live demo (fictional data):** _[deploy URL here]_ — runs in **Demo Mode** with a fictional person, "Margaret," so no real family memories are ever exposed publicly.
@@ -44,18 +65,19 @@ The deployed demo seeds a complete fictional life (10 memories, people, places, 
 
 ## Open-source AI at the core
 
-Storyhouse's intelligence is **[Gemma 3](https://ai.google.dev/gemma)** (open-weight, 4B), served **locally via [Ollama](https://ollama.com/)**. Gemma does the real work:
+Storyhouse's intelligence is **[Gemma](https://ai.google.dev/gemma)** (open-weight): **Gemma 4 26B-A4B on Workers AI** in the family's own Cloudflare account, or **Gemma 3 4B locally via [Ollama](https://ollama.com/)**. Gemma does the real work:
 
 - conversational responses as the companion
 - **memory extraction** (turning her words into structured JSON: title, people, places, dates, emotions, themes)
 - entity extraction and novelty reasoning
 - retrieval synthesis (answering "what did I tell you about Grandpa's car?")
 
-Semantic memory search uses the open **`nomic-embed-text`** embedding model, also local. Every model sits behind a **provider abstraction** (`AIProvider`, `SpeechProvider`, `ImageProvider`, …) so it can be swapped without touching application logic.
+Semantic memory search uses open embedding models (**EmbeddingGemma** hosted, **`nomic-embed-text`** locally). Every model sits behind a **provider abstraction** (`AIProvider`, `SpeechProvider`, `ImageProvider`, …) so it can be swapped without touching application logic.
 
 ```
 AIProvider
-  ├── OllamaProvider   (Gemma — the open-source core)
+  ├── WorkersAIProvider (Gemma 4 + EmbeddingGemma, family's Cloudflare account)
+  ├── OllamaProvider   (Gemma 3 — fully local)
   └── MockProvider     (honest offline fallback: the app still opens & the Vault still works)
 ```
 
@@ -93,53 +115,52 @@ Principles baked into the data model and prompts:
 
 ## Privacy
 
-- Memories are stored **locally** and are **never used to train any model**.
+- Memories live in **the family's own Cloudflare account** (or entirely on one machine with Ollama) and are **never used to train any model**.
+- Nothing is public: every photo, voice and memory is behind the Studio passcode, her paired iPad, or the read-only Family View passcode.
+- Photos are stripped of location data in the browser before upload. Storyhouse **never imitates a relative's voice**.
 - The microphone **only listens when tapped** — there is no silent, always-on recording. The privacy state is always visible, with a prominent mute.
 - AI-generated images are **always labeled** as interpretations, never shown as historical photographs.
-- The family can **export the entire archive** (JSON or a Markdown storybook) at any time. The vault is never locked away from them.
+- The family can **export the entire archive** (JSON, Markdown, or a PDF storybook) at any time. The vault is never locked away from them.
 - The public demo runs on **fictional data only**.
 
 ---
 
 ## Running locally
 
-**Prerequisites:** [Node.js 20+](https://nodejs.org) and [Ollama](https://ollama.com).
+**Prerequisites:** [Node.js 20+](https://nodejs.org) and a free Cloudflare account (`npx wrangler login`).
 
 ```bash
-# 1. Pull the open models (once)
-ollama pull gemma3:4b
-ollama pull nomic-embed-text
-
-# 2. Install
 npm install
-
-# 3. Configure (optional — sensible defaults work out of the box)
-cp .env.example .env
-
-# 4. Run (starts API + web client together)
-npm run dev
+npm run db:migrate:local                         # create the local D1 tables (once)
+cp worker/.dev.vars.example worker/.dev.vars     # set local passcodes; DEMO_MODE=true
+npm run dev                                      # Worker on :8787 + web app on :5173
 ```
 
-Then open **http://localhost:5173**. The server seeds the fictional "Margaret" demo archive on first run.
+Open **http://localhost:5173**, choose **Family Studio**, and enter your local `STUDIO_PASSCODE`. Demo mode
+seeds the fictional "Margaret" archive and a small fictional album on first request.
 
-> **Note on Windows:** Storyhouse uses Node's built-in `node:sqlite` (via `--experimental-sqlite`), so there is **no native build step** — no Visual Studio / node-gyp required.
+- Workers AI runs remotely even in local dev. For a **fully offline** setup, set `AI_PROVIDER=ollama` in
+  `worker/.dev.vars` and run Ollama with `gemma3:4b` + `nomic-embed-text`.
+- The original hackathon server (Express + `node:sqlite`) is still in `server/`: `npm run dev:legacy`.
+- **Deploying to your own account:** see [docs/deployment.md](./docs/deployment.md).
 
 ---
 
-## Environment variables
+## Configuration
 
-See [`.env.example`](./.env.example). Highlights:
+Vars live in [`worker/wrangler.jsonc`](./worker/wrangler.jsonc); secrets are set with `wrangler secret put`
+(or `worker/.dev.vars` locally).
 
-| Variable | Default | Purpose |
+| Name | Default | Purpose |
 | --- | --- | --- |
-| `AI_PROVIDER` | `ollama` | `ollama` (local, open) or `mock` (offline fallback) |
-| `AI_MODEL` | `gemma3:4b` | the open-weight conversational model |
-| `EMBED_MODEL` | `nomic-embed-text` | open embedding model for memory search |
-| `OLLAMA_BASE_URL` | `http://localhost:11434` | local inference endpoint |
-| `DEMO_MODE` | `true` | seed fictional data + show the demo banner (**keep ON for any public deploy**) |
-| `DATABASE_PATH` | `./data/storyhouse.db` | the local Memory Vault (git-ignored) |
-
-No API keys are required to run the core product.
+| `AI_PROVIDER` | `workers-ai` | `workers-ai` (open models, family's account), `ollama` (local), or `mock` |
+| `AI_MODEL` | `@cf/google/gemma-4-26b-a4b-it` | open-weight conversational model |
+| `EMBED_MODEL` | `@cf/google/embeddinggemma-300m` | open embedding model for memory search |
+| `IMAGE_MODEL` | `@cf/black-forest-labs/flux-1-schnell` | open image model for labeled memory art |
+| `DEMO_MODE` | `false` (deployed) | seed fictional data + show the demo banner |
+| `STUDIO_PASSCODE` | — (secret) | the Family Studio passcode. Without it nobody can get in |
+| `SESSION_SECRET` | — (secret) | signs session cookies |
+| `FAMILY_PASSCODE` | — (secret, optional) | read-only Family View |
 
 ---
 
@@ -147,7 +168,15 @@ No API keys are required to run the core product.
 
 ```
 storyhouse/
-├─ server/                 # Node + TypeScript API (Express)
+├─ worker/                 # Cloudflare Worker (Hono) — the API, the gate, D1 + R2 + Workers AI
+│  ├─ migrations/          # D1 schema: Memory Vault + album, people, devices, Today
+│  └─ src/
+│     ├─ auth.ts           # studio / paired iPad / family / none — server-side gate
+│     ├─ ai/               # providers: Workers AI (Gemma 4), Ollama (Gemma 3), mock; prompts
+│     ├─ house/album.ts    # photos, faces, people, voices, Today card
+│     ├─ memory/           # store (entities, links, vector search) + pipeline
+│     └─ routes/           # house (iPad + Studio), memories (original rooms), media (R2)
+├─ server/                 # the original hackathon API (Express + node:sqlite), kept as-is
 │  └─ src/
 │     ├─ ai/               # provider abstraction: Ollama/Gemma + mock, prompts
 │     ├─ db/               # node:sqlite Memory Vault + schema
@@ -157,7 +186,9 @@ storyhouse/
 │     └─ routes.ts         # REST API
 ├─ client/                 # React + TypeScript + Vite + Tailwind
 │  └─ src/
-│     ├─ components/       # Living Room, Library, Detail, Gallery, Timeline, Vault
+│     ├─ house/            # her iPad: home, Today card, photo album
+│     ├─ studio/           # the Family Studio: photos, faces, voices, iPad setup
+│     ├─ components/       # Lock screen, Living Room, Library, Detail, Gallery, Timeline, Vault
 │     ├─ hooks/useSpeech   # Web Speech API (voice in/out)
 │     └─ store.ts          # app + presence/privacy state
 └─ docs/                   # architecture, memory model, privacy, AI, deployment, hardware
@@ -176,8 +207,8 @@ A future physical "Storyhouse" device (Raspberry Pi / microphone / speaker / a r
 ## Limitations (honest)
 
 - First conversation turn after idle is slower while the model loads into VRAM; turns are fast once warm.
-- Voice input uses the browser's Web Speech API (quality varies by browser); ElevenLabs / Whisper adapters are scaffolded for later.
-- Memory "art" is a labeled stylized interpretation card in this build; a real open image model slots in behind the same `ImageProvider`.
+- Voice input uses the browser's Web Speech API (quality varies by browser; unreliable in iPad Home Screen apps). Whisper on Workers AI is the planned voice-in for the iPad companion (Phase 3).
+- Memory art uses open Flux.1 [schnell] on Workers AI when hosted; locally it falls back to a labeled interpretation card.
 - Novelty/curiosity engines are present but intentionally light in the MVP.
 
 ---

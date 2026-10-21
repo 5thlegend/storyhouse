@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { Health } from './types';
+import type { Health, Role, Session } from './types';
 
 export type PresenceState =
   | 'idle'
@@ -9,6 +9,8 @@ export type PresenceState =
   | 'speaking'
   | 'saving'
   | 'private';
+
+export type StudioMode = 'studio' | 'storyhouse' | 'preview';
 
 export type View = 'living-room' | 'library' | 'gallery' | 'timeline' | 'vault' | 'about';
 
@@ -25,11 +27,16 @@ interface AppState {
   muted: boolean; // privacy: microphone muted
   setMuted: (m: boolean) => void;
 
-  // Access role. 'owner' = the person on the device (full access).
-  // 'family' = read-only viewer (no Living Room, no editing).
-  role: 'owner' | 'family';
-  sharingEnabled: boolean;
-  setAccess: (role: 'owner' | 'family', sharingEnabled: boolean) => void;
+  // Who is at the door (from /api/session). 'studio' = the family member running
+  // the Family Studio; 'grandma' = her paired iPad; 'family' = read-only viewer.
+  session: Session | null;
+  role: Role;
+  setSession: (s: Session | null) => void;
+
+  // Inside the Studio: the Studio itself, the original Storyhouse rooms, or a
+  // preview of exactly what her iPad shows.
+  studioMode: StudioMode;
+  setStudioMode: (m: StudioMode) => void;
 
   selectedMemoryId: string | null;
   openMemory: (id: string | null) => void;
@@ -48,9 +55,12 @@ export const useApp = create<AppState>((set) => ({
   muted: false,
   setMuted: (muted) => set({ muted }),
 
-  role: 'owner',
-  sharingEnabled: false,
-  setAccess: (role, sharingEnabled) => set({ role, sharingEnabled }),
+  session: null,
+  role: 'none',
+  setSession: (session) => set({ session, role: session?.role ?? 'none' }),
+
+  studioMode: 'studio',
+  setStudioMode: (studioMode) => set({ studioMode }),
 
   selectedMemoryId: null,
   openMemory: (selectedMemoryId) => set({ selectedMemoryId }),

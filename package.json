@@ -6,15 +6,18 @@
   "license": "MIT",
   "workspaces": [
     "server",
-    "client"
+    "client",
+    "worker"
   ],
   "scripts": {
-    "dev": "concurrently -n server,client -c cyan,magenta \"npm:dev:server\" \"npm:dev:client\"",
-    "dev:server": "npm --workspace server run dev",
+    "dev": "concurrently -n worker,client -c cyan,magenta \"npm:dev:worker\" \"npm:dev:client\"",
+    "dev:worker": "npm --workspace worker run dev",
     "dev:client": "npm --workspace client run dev",
-    "build": "npm --workspace server run build && npm --workspace client run build",
-    "start": "npm --workspace server run start",
-    "seed": "npm --workspace server run seed"
+    "dev:legacy": "concurrently -n server,client -c cyan,magenta \"npm --workspace server run dev\" \"npm:dev:client\"",
+    "build": "npm --workspace client run build",
+    "deploy": "npm run build && npm --workspace worker run deploy",
+    "db:migrate:local": "npm --workspace worker run db:migrate:local",
+    "db:migrate:remote": "npm --workspace worker run db:migrate:remote"
   },
   "devDependencies": {
     "concurrently": "^9.1.0"

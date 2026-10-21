@@ -1,4 +1,16 @@
-import type { Health, Memory, RespondResult, VaultStats } from './types';
+import type {
+  AlbumPhoto,
+  Device,
+  Health,
+  Memory,
+  Person,
+  PhotoKind,
+  RespondResult,
+  Role,
+  Session,
+  TodayNote,
+  VaultStats,
+} from './types';
 
 const BASE = '/api';
 
@@ -12,21 +24,6 @@ async function j<T>(res: Response): Promise<T> {
 
 export const api = {
   health: () => fetch(`${BASE}/health`).then(j<Health>),
-
-  warmup: () => fetch(`${BASE}/warmup`, { method: 'POST' }).then(j<{ warming: boolean }>),
-
-  familyStatus: () =>
-    fetch(`${BASE}/family/status`).then(j<{ role: 'owner' | 'family'; sharingEnabled: boolean }>),
-
-  familyUnlock: (passcode: string) =>
-    fetch(`${BASE}/family/unlock`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ passcode }),
-    }).then(j<{ role: string }>),
-
-  familyLogout: () =>
-    fetch(`${BASE}/family/logout`, { method: 'POST' }).then(j<{ role: string }>),
 
   startConversation: () =>
     fetch(`${BASE}/conversations`, { method: 'POST' }).then(j<{ id: string }>),
@@ -125,4 +122,104 @@ export const api = {
   exportUrl: `${BASE}/export`,
   exportMarkdownUrl: `${BASE}/export/markdown`,
   exportPdfUrl: `${BASE}/export/pdf`,
+
+  // ---------- the front door ----------
+  session: () => fetch(`${BASE}/session`).then(j<Session>),
+
+  unlock: (passcode: string) => post<{ role: Role }>('/session/unlock', { passcode }),
+
+  pair: (code: string) => post<{ role: Role }>('/session/pair', { code }),
+
+  logout: () => post<{ ok: boolean }>('/session/logout', {}),
+
+  // ---------- her iPad ----------
+  album: () => fetch(`${BASE}/house/album`).then(j<{ photos: AlbumPhoto[] }>),
+
+  today: (date: string) => fetch(`${BASE}/house/today?date=${date}`).then(j<TodayNote>),
+
+  // ---------- the Family Studio ----------
+  studio: {
+    photos: () => fetch(`${BASE}/studio/photos`).then(j<{ photos: AlbumPhoto[] }>),
+
+    upload: (
+      blob: Blob,
+      opts: { width: number; height: number; kind: PhotoKind; made_by?: string | null },
+    ) => {
+      const q = new URLSearchParams({
+        width: String(opts.width),
+        height: String(opts.height),
+        kind: opts.kind,
+        ...(opts.made_by ? { made_by: opts.made_by } : {}),
+      });
+      return fetch(`${BASE}/studio/photos?${q}`, {
+        method: 'POST',
+        headers: { 'Content-Type': blob.type },
+        body: blob,
+      }).then(j<{ photo: AlbumPhoto }>);
+    },
+
+    updatePhoto: (
+      id: string,
+      patch: Partial<Pick<AlbumPhoto, 'caption' | 'when_text' | 'kind' | 'made_by' | 'status'>>,
+    ) => send<{ photo: AlbumPhoto }>('PATCH', `/studio/photos/${id}`, patch),
+
+    deletePhoto: (id: string) => send<{ ok: boolean }>('DELETE', `/studio/photos/${id}`),
+
+    setPhotoVoice: (id: string, audio: Blob, recordedBy: string) =>
+      putAudio<{ photo: AlbumPhoto }>(`/studio/photos/${id}/voice`, audio, recordedBy),
+
+    clearPhotoVoice: (id: string) => send<{ photo: AlbumPhoto }>('DELETE', `/studio/photos/${id}/voice`),
+
+    addFace: (photoId: string, face: { person_id: string; x: number; y: number; r?: number }) =>
+      post<{ photo: AlbumPhoto }>(`/studio/photos/${photoId}/faces`, face),
+
+    removeFace: (faceId: string) => send<{ photo: AlbumPhoto }>('DELETE', `/studio/faces/${faceId}`),
+
+    people: () => fetch(`${BASE}/studio/people`).then(j<{ people: Person[] }>),
+
+    addPerson: (name: string, relation: string | null) =>
+      post<{ person: Person }>('/studio/people', { name, relation }),
+
+    updatePerson: (id: string, patch: { name?: string; relation?: string | null }) =>
+      send<{ person: Person }>('PATCH', `/studio/people/${id}`, patch),
+
+    deletePerson: (id: string) => send<{ ok: boolean }>('DELETE', `/studio/people/${id}`),
+
+    setPersonVoice: (id: string, audio: Blob, recordedBy: string) =>
+      putAudio<{ person: Person }>(`/studio/people/${id}/voice`, audio, recordedBy),
+
+    clearPersonVoice: (id: string) => send<{ person: Person }>('DELETE', `/studio/people/${id}/voice`),
+
+    setToday: (t: TodayNote) => send<TodayNote>('PUT', '/studio/today', t),
+
+    pairingCode: (label?: string) =>
+      post<{ code: string; expires_at: string }>('/studio/pairing', label ? { label } : {}),
+
+    devices: () => fetch(`${BASE}/studio/devices`).then(j<{ devices: Device[] }>),
+
+    forgetDevice: (id: string) => send<{ ok: boolean }>('DELETE', `/studio/devices/${id}`),
+  },
 };
+
+function send<T>(method: string, path: string, body?: unknown): Promise<T> {
+  return fetch(`${BASE}${path}`, {
+    method,
+    headers: body === undefined ? undefined : { 'Content-Type': 'application/json' },
+    body: body === undefined ? undefined : JSON.stringify(body),
+  }).then(j<T>);
+}
+
+function post<T>(path: string, body: unknown): Promise<T> {
+  return send<T>('POST', path, body);
+}
+
+function putAudio<T>(path: string, audio: Blob, recordedBy: string): Promise<T> {
+  return fetch(`${BASE}${path}`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': audio.type.split(';')[0] || 'audio/mp4',
+      'X-Recorded-By': encodeURIComponent(recordedBy),
+    },
+    body: audio,
+  }).then(j<T>);
+}

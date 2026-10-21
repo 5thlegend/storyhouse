@@ -16,23 +16,12 @@ function Stat({ n, label, icon }: { n: number; label: string; icon: string }) {
 }
 
 export function Vault() {
-  const { role, sharingEnabled } = useApp();
+  const { role, session } = useApp();
   const [stats, setStats] = useState<VaultStats | null>(null);
 
   useEffect(() => {
     api.vault().then((r) => setStats(r.stats));
   }, []);
-
-  async function openFamilyView() {
-    const code = window.prompt('Enter the family passcode to open the read-only Family View:');
-    if (!code) return;
-    try {
-      await api.familyUnlock(code);
-      window.location.reload();
-    } catch {
-      window.alert('That passcode did not match.');
-    }
-  }
 
   return (
     <section className="mx-auto h-full max-w-3xl overflow-y-auto px-4 pb-6 pt-4">
@@ -49,7 +38,7 @@ export function Vault() {
           <Stat n={stats.people} label="People" icon="👤" />
           <Stat n={stats.places} label="Places" icon="📍" />
           <Stat n={stats.recipes} label="Recipes" icon="🍽️" />
-          <Stat n={stats.unfinished} label="Unfinished" icon="…" />
+          <Stat n={stats.photos} label="Album photos" icon="📷" />
           <Stat n={stats.artifacts} label="Artworks" icon="🖼️" />
         </div>
       )}
@@ -77,23 +66,17 @@ export function Vault() {
       {role !== 'family' && (
         <div className="card mb-6">
           <h3 className="mb-3 font-serif text-2xl text-cocoa">Family sharing</h3>
-          {sharingEnabled ? (
-            <>
-              <p className="mb-4 text-ink/90">
-                Family can open a <strong>read-only Family View</strong> — the Library, Gallery,
-                Timeline and Vault — with the family passcode. Grandma’s <strong>Living Room
-                conversation, microphone, and editing stay private to her</strong>, and anything
-                marked private is never shown. It all runs on this device; nothing is uploaded.
-              </p>
-              <button className="btn-ghost" onClick={openFamilyView}>
-                👪 Open Family View (read-only)
-              </button>
-            </>
+          {session?.familyViewEnabled ? (
+            <p className="text-ink/90">
+              Family can open a <strong>read-only Family View</strong> — the Library, Gallery, Timeline,
+              Vault and her photo album — by entering the family passcode on this same address.
+              Grandma’s <strong>Living Room conversation, microphone, and editing stay private</strong>,
+              and anything marked private is never shown.
+            </p>
           ) : (
             <p className="text-ink/90">
               Family sharing is currently <strong>off</strong>. To let family view the archive
-              read-only, set a <code>FAMILY_PASSCODE</code> on this device. Storage stays local —
-              on your home network, or privately over a Cloudflare Tunnel.
+              read-only, set a <code>FAMILY_PASSCODE</code> secret (see docs/deployment.md).
             </p>
           )}
         </div>
@@ -102,7 +85,10 @@ export function Vault() {
       <div className="card">
         <h3 className="mb-3 font-serif text-2xl text-cocoa">Privacy &amp; honesty</h3>
         <ul className="space-y-2 text-ink/90">
-          <li>🔒 Memories are stored locally and never used to train any model.</li>
+          <li>
+            🔒 Memories live in the family’s own Cloudflare account (or on this machine, when run
+            locally) and are never used to train any model.
+          </li>
           <li>🎙️ The microphone only listens when you tap it. Nothing is recorded in secret.</li>
           <li>🧭 Every memory shows where it came from — her words, an estimate, or an AI inference.</li>
           <li>🖼️ AI-made images are always labeled as interpretations, never as real photographs.</li>

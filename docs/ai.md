@@ -1,33 +1,55 @@
 # The AI layer
 
-## Model
-- **Conversation & reasoning:** `gemma3:4b` — Google **Gemma 3**, open-weight, Gemma Terms of Use. Run locally via **Ollama** (no cloud).
-- **Embeddings:** `nomic-embed-text` — open embedding model, local.
-- **Inference:** fully local. Nothing is sent to any external API by default.
+## Models (all open-weight)
+
+| Job | Hosted (Workers AI, the family's account) | Fully local (Ollama) |
+| --- | --- | --- |
+| Conversation & extraction | `@cf/google/gemma-4-26b-a4b-it` | `gemma3:4b` |
+| Embeddings (memory search) | `@cf/google/embeddinggemma-300m` | `nomic-embed-text` |
+| Memory art | `@cf/black-forest-labs/flux-1-schnell` | labeled SVG interpretation card |
+
+Gemma 3 is deprecated on Workers AI, so the hosted path uses **Gemma 4 26B-A4B**: a
+mixture-of-experts model with ~4B active parameters, so it answers about as fast as a 4B model
+(about 3 seconds per turn in testing) with the quality of a much larger one.
+
+**Thinking is switched off.** Gemma 4 reasons before answering by default; on the companion's short
+token budget the reasoning alone can use everything up and leave her with an empty reply. The
+Worker passes `chat_template_kwargs: { enable_thinking: false }` (see `worker/src/ai/workersai.ts`).
 
 ## Why Gemma
-Open weights make the only ethical architecture for private family memories possible: on-device processing, offline operation, zero running cost, and the freedom to swap or fine-tune. See the README's "Why Gemma / why open innovation matters."
+Open weights make the only ethical architecture for private family memories possible: family-owned
+processing, offline operation, near-zero running cost, and the freedom to swap or fine-tune. See the
+README's "Why Gemma / why open innovation matters."
 
 ## Provider abstraction
 ```ts
 interface AIProvider {
   isAvailable(): Promise<boolean>;
   converse(history, retrievedContext, noveltyHint?): Promise<string>;
+  converseStream?(history, retrievedContext, noveltyHint?): AsyncGenerator<string>;
   extractMemory(transcript): Promise<ExtractedMemory>;
   assessNovelty(input): Promise<NoveltyAssessment>;
   embed(text): Promise<number[]>;
 }
 ```
-- `OllamaProvider` — the real open-model implementation.
-- `MockProvider` — honest offline fallback; the app still opens and the Vault still works, and the UI shows the AI is offline. It is **not** a fake-intelligence `if/else` pretending to be the model.
+- `WorkersAIProvider` — Gemma 4 + EmbeddingGemma through the Workers AI binding.
+- `OllamaProvider` — Gemma 3 on a local machine (`AI_PROVIDER=ollama`).
+- `MockProvider` — honest offline fallback; the app still opens and the Vault still works, and the
+  UI shows the AI is offline. It is **not** a fake-intelligence `if/else` pretending to be the model.
+
+Embeddings from different models aren't comparable, so switching embedding models means
+re-embedding (re-seed the demo, or re-run consolidation for real memories).
 
 ## Prompts (the honesty rails)
-- **Companion:** warm, not human, not a doctor, grounded only in retrieved memories, says "you told me…", one gentle follow-up, never shames repetition, encourages family.
-- **Extraction:** returns strict JSON; never fabricates fields; unknown = null; never invents date precision (enforced again in code).
+- **Companion:** warm, not human, not a doctor, grounded only in retrieved memories, says "you told
+  me…", one gentle follow-up, never shames repetition, encourages family — and **never asks "Do you
+  remember…?"** (for someone with memory loss that is a quiz she can fail; it invites with "Tell me
+  about…" instead).
+- **Extraction:** returns strict JSON; never fabricates fields; unknown = null; never invents date
+  precision (enforced again in code — a bare year is never an "exact" date).
 - **Novelty:** avoids repeating questions; prefers a new angle on a known memory.
 
 ## How to replace the model
-Change `AI_MODEL` (e.g. `gemma2:2b` for lower VRAM, `gemma3:4b` for quality) or set `AI_PROVIDER=mock`. For on-device mobile, a MediaPipe `GemmaEdgeProvider` implements the same interface (see `docs/hardware.md`).
-
-## Performance notes
-First turn after idle loads the model into VRAM (slower); `keep_alive` + a boot warmup keep both models resident. Tested on a 6 GB RTX 4050: ~2–4 s warm turns at ~23 tok/s for `gemma3:4b`.
+Change `AI_MODEL` / `EMBED_MODEL` in `worker/wrangler.jsonc` (or `OLLAMA_MODEL` / `OLLAMA_EMBED_MODEL`
+for local), or set `AI_PROVIDER=mock`. For on-device mobile, a MediaPipe `GemmaEdgeProvider`
+implements the same interface (see `docs/hardware.md`).
