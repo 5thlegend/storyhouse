@@ -15,13 +15,13 @@
     "run_worker_first": ["/api/*", "/media/*"]
   },
 
-  // The Memory Vault + album metadata (SQLite). Replace database_id after
-  // `wrangler d1 create storyhouse` (see docs/deployment.md).
+  // The Memory Vault + album metadata (SQLite). For a fresh account, replace
+  // database_id with the one from `wrangler d1 create storyhouse` (docs/deployment.md).
   "d1_databases": [
     {
       "binding": "DB",
       "database_name": "storyhouse",
-      "database_id": "00000000-0000-0000-0000-000000000000",
+      "database_id": "fd4fd996-c94d-4725-9746-2bc35c052428",
       "migrations_dir": "migrations"
     }
   ],
