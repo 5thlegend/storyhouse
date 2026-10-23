@@ -1,23 +1,51 @@
 // Her iPad's home. Same layout every time: today at the top, rooms below as big
-// tiles. New rooms (Reading Nook, Music) become more tiles here.
+// tiles. Rooms load in the background as soon as home appears, so every tap
+// opens instantly.
 
-import { useState } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { TodayCard } from './TodayCard';
-import { PhotoAlbum } from './PhotoAlbum';
-import { ArtStudio } from './ArtStudio';
-import { Kitchen } from './Kitchen';
 import { useHouse, useNow } from './useHouse';
 
-type Room = 'home' | 'album' | 'art' | 'kitchen';
+const loadAlbum = () => import('./PhotoAlbum');
+const loadArt = () => import('./ArtStudio');
+const loadKitchen = () => import('./Kitchen');
+const loadTalk = () => import('./Talk');
+const PhotoAlbum = lazy(() => loadAlbum().then((m) => ({ default: m.PhotoAlbum })));
+const ArtStudio = lazy(() => loadArt().then((m) => ({ default: m.ArtStudio })));
+const Kitchen = lazy(() => loadKitchen().then((m) => ({ default: m.Kitchen })));
+const Talk = lazy(() => loadTalk().then((m) => ({ default: m.Talk })));
+
+type Room = 'home' | 'talk' | 'album' | 'art' | 'kitchen';
+
+const TILE =
+  'relative flex min-h-[230px] overflow-hidden rounded-[2rem] text-left shadow-warm focus:outline-none focus-visible:ring-8 focus-visible:ring-gold/60';
 
 export function GrandmaHome() {
   const [room, setRoom] = useState<Room>('home');
   const { photos, today } = useHouse();
   const now = useNow();
 
-  if (room === 'album') return <PhotoAlbum photos={photos ?? []} onHome={() => setRoom('home')} />;
-  if (room === 'art') return <ArtStudio onHome={() => setRoom('home')} />;
-  if (room === 'kitchen') return <Kitchen onHome={() => setRoom('home')} />;
+  useEffect(() => {
+    const id = window.setTimeout(() => {
+      void loadTalk();
+      void loadAlbum();
+      void loadArt();
+      void loadKitchen();
+    }, 300);
+    return () => window.clearTimeout(id);
+  }, []);
+
+  const home = () => setRoom('home');
+  if (room !== 'home') {
+    return (
+      <Suspense fallback={<div className="h-full bg-linen" />}>
+        {room === 'talk' && <Talk onHome={home} />}
+        {room === 'album' && <PhotoAlbum photos={photos ?? []} onHome={home} />}
+        {room === 'art' && <ArtStudio onHome={home} />}
+        {room === 'kitchen' && <Kitchen onHome={home} />}
+      </Suspense>
+    );
+  }
 
   const cover = photos?.[0];
   const newCount = photos?.filter((p) => p.is_new).length ?? 0;
@@ -27,11 +55,18 @@ export function GrandmaHome() {
     <div className="flex h-full flex-col gap-5 overflow-y-auto p-5 sm:p-8">
       <TodayCard now={now} today={today} />
 
-      <div className="grid min-h-[280px] flex-1 grid-cols-1 gap-5 sm:grid-cols-3">
-        <button
-          onClick={() => setRoom('album')}
-          className="relative flex min-h-[260px] overflow-hidden rounded-[2rem] bg-cocoa text-left shadow-warm focus:outline-none focus-visible:ring-8 focus-visible:ring-gold/60"
-        >
+      <div className="grid flex-1 grid-cols-1 gap-5 sm:grid-cols-2">
+        <button onClick={() => setRoom('talk')} className={`${TILE} bg-plum`}>
+          <span className="absolute right-6 top-4 text-8xl opacity-80" aria-hidden>
+            💬
+          </span>
+          <span className="relative mt-auto p-8">
+            <span className="block font-serif text-5xl text-linen drop-shadow sm:text-6xl">Talk with me</span>
+            <span className="mt-2 block font-sans text-2xl text-linen/90">Just say hello</span>
+          </span>
+        </button>
+
+        <button onClick={() => setRoom('album')} className={`${TILE} bg-cocoa`}>
           {cover && (
             <img src={cover.url} alt="" className="absolute inset-0 h-full w-full object-cover opacity-80" draggable={false} />
           )}
@@ -47,23 +82,17 @@ export function GrandmaHome() {
           </span>
         </button>
 
-        <button
-          onClick={() => setRoom('art')}
-          className="relative flex min-h-[260px] overflow-hidden rounded-[2rem] bg-sage text-left shadow-warm focus:outline-none focus-visible:ring-8 focus-visible:ring-gold/60"
-        >
+        <button onClick={() => setRoom('art')} className={`${TILE} bg-sage`}>
           <span className="absolute right-6 top-4 text-8xl opacity-80" aria-hidden>
             🎨
           </span>
           <span className="relative mt-auto p-8">
             <span className="block font-serif text-5xl text-linen drop-shadow sm:text-6xl">Art Studio</span>
-            <span className="mt-2 block font-sans text-2xl text-linen/90">Color a picture</span>
+            <span className="mt-2 block font-sans text-2xl text-linen/90">Color, draw, and paint</span>
           </span>
         </button>
 
-        <button
-          onClick={() => setRoom('kitchen')}
-          className="relative flex min-h-[260px] overflow-hidden rounded-[2rem] bg-ember text-left shadow-warm focus:outline-none focus-visible:ring-8 focus-visible:ring-gold/60"
-        >
+        <button onClick={() => setRoom('kitchen')} className={`${TILE} bg-ember`}>
           <span className="absolute right-6 top-4 text-8xl opacity-80" aria-hidden>
             🥧
           </span>

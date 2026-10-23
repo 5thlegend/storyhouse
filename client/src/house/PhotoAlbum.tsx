@@ -36,6 +36,12 @@ export function PhotoAlbum({ photos, onHome }: { photos: AlbumPhoto[]; onHome: (
 
   useEffect(() => () => stopAll(), []);
 
+  // Load the photos on either side, so "Next" and "Back" are instant.
+  useEffect(() => {
+    if (count < 2) return;
+    for (const d of [1, -1]) new Image().src = photos[(index + d + count) % count].url;
+  }, [index, count, photos]);
+
   if (!photo) {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-8 p-8 text-center">

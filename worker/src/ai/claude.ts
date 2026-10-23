@@ -6,12 +6,14 @@ import { COMPANION_SYSTEM, EXTRACTION_SYSTEM, NOVELTY_SYSTEM } from './prompts.j
 import { buildContextBlock, normalizeExtraction } from './shared.js';
 import { WorkersAIProvider } from './workersai.js';
 
-// Claude Haiku 5.5 notes (see the Anthropic migration guide):
-// - no temperature/top_p/top_k (non-default values return a 400), no prefill;
-// - thinking is adaptive and on by default, so read content blocks by type and
-//   leave max_tokens room for it; `effort: low` keeps her replies quick;
+// Claude Sonnet 5.5 notes (see the Anthropic migration guide):
+// - no temperature/top_p/top_k and no prefill; never send thinking
+//   {type: "disabled"} (a 400 on Sonnet 5.5) — thinking stays adaptive, and
+//   `effort: low` keeps it short so her replies start quickly;
+// - read content blocks by type and leave max_tokens room for thinking;
 // - safety refusals have no server-side fallback, so a refusal is thrown and the
 //   FallbackProvider hands the turn to Gemma instead.
+// The model id comes from ANTHROPIC_MODEL, so Haiku 5.5 still works here too.
 
 // Structured outputs support anyOf (not type arrays) for nullable fields.
 const nullableString = { anyOf: [{ type: 'string' }, { type: 'null' }] } as const;
@@ -80,7 +82,7 @@ function textOf(message: Anthropic.Message): string {
 }
 
 /**
- * Claude Haiku 5.5 for conversation and memory structuring, through the
+ * Claude (Sonnet 5.5 by default) for conversation and memory structuring, through the
  * family's own Anthropic API key. Embeddings stay on EmbeddingGemma (Workers
  * AI) so memory search keeps working with every memory already saved.
  */
@@ -101,13 +103,18 @@ export class ClaudeProvider implements AIProvider {
     return !!env.ANTHROPIC_API_KEY;
   }
 
-  private system(context: RetrievedContext, noveltyHint?: string | null): string {
-    return (
-      COMPANION_SYSTEM +
-      '\n\n' +
-      buildContextBlock(context) +
-      (noveltyHint ? `\n\nGENTLE DIRECTION (optional, only if it fits naturally): ${noveltyHint}` : '')
-    );
+  // The companion's character never changes, so it is cached; the memories and
+  // today's facts follow it uncached.
+  private system(context: RetrievedContext, noveltyHint?: string | null): Anthropic.TextBlockParam[] {
+    return [
+      { type: 'text', text: COMPANION_SYSTEM, cache_control: { type: 'ephemeral' } },
+      {
+        type: 'text',
+        text:
+          buildContextBlock(context) +
+          (noveltyHint ? `\n\nGENTLE DIRECTION (optional, only if it fits naturally): ${noveltyHint}` : ''),
+      },
+    ];
   }
 
   async converse(history: ChatTurn[], context: RetrievedContext, noveltyHint?: string | null): Promise<string> {

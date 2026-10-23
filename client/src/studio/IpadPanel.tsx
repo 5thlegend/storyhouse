@@ -85,6 +85,117 @@ export function IpadPanel() {
       </div>
 
       <TodayEditor />
+      <CompanionEditor />
+    </div>
+  );
+}
+
+// Her companion's voice. All are natural synthetic voices (Deepgram Aura via
+// the family's Cloudflare account), never a clone of anyone she knows.
+const VOICES = [
+  { model: 'aura-2', speaker: 'luna', about: 'Bright and friendly (recommended)' },
+  { model: 'aura-2', speaker: 'helena', about: 'Warm and caring' },
+  { model: 'aura-2', speaker: 'cora', about: 'Gentle and calm' },
+  { model: 'aura-2', speaker: 'harmonia', about: 'Soft and soothing' },
+  { model: 'aura-2', speaker: 'vesta', about: 'Steady and clear' },
+  { model: 'aura-2', speaker: 'hera', about: 'Mature and kind' },
+];
+const SAMPLE = 'Good morning! It is so nice to see you. What would you like to talk about today?';
+
+function CompanionEditor() {
+  const [voice, setVoiceState] = useState<{ model: string; speaker: string } | null>(null);
+  const [name, setName] = useState('');
+  const [playing, setPlaying] = useState<string | null>(null);
+  const [note, setNote] = useState<string | null>(null);
+
+  useEffect(() => {
+    api
+      .voice()
+      .then((v) => {
+        setVoiceState({ model: v.model, speaker: v.speaker });
+        setName(v.herName);
+      })
+      .catch(() => {});
+  }, []);
+
+  async function preview(model: string, speaker: string) {
+    setNote(null);
+    setPlaying(speaker);
+    try {
+      const url = URL.createObjectURL(await api.studio.previewVoice(SAMPLE, model, speaker));
+      const audio = new Audio(url);
+      audio.onended = () => {
+        URL.revokeObjectURL(url);
+        setPlaying(null);
+      };
+      await audio.play();
+    } catch (err: any) {
+      setPlaying(null);
+      setNote(err?.message ?? 'Could not play that voice.');
+    }
+  }
+
+  return (
+    <div className="card font-sans lg:col-span-2">
+      <h2 className="mb-1 font-serif text-2xl text-cocoa">Her companion</h2>
+      <p className="mb-4 text-sm text-umber">
+        The voice she hears in “Talk with me” and everywhere on her iPad. These are natural AI voices, never a copy of
+        a family member’s voice. Talking with her uses Claude; the voice runs on your Cloudflare account.
+      </p>
+      <label className="mb-4 block max-w-sm text-sm text-umber">
+        What should it call her?
+        <span className="mt-1 flex gap-2">
+          <input
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Grandma"
+            className="block w-full rounded-xl border border-cocoa/20 bg-linen px-3 py-2 text-ink"
+          />
+          <button
+            className="btn-primary"
+            disabled={!name.trim()}
+            onClick={async () => {
+              await api.studio.setHerName(name.trim());
+              setNote('Saved ✓');
+            }}
+          >
+            Save
+          </button>
+        </span>
+      </label>
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        {VOICES.map((v) => {
+          const chosen = voice?.speaker === v.speaker && voice?.model === v.model;
+          return (
+            <div
+              key={v.speaker}
+              className={`rounded-2xl border-2 p-4 ${chosen ? 'border-gold bg-gold/10' : 'border-cocoa/10 bg-cream/60'}`}
+            >
+              <p className="font-serif text-xl capitalize text-cocoa">{v.speaker}</p>
+              <p className="mb-3 text-sm text-umber">{v.about}</p>
+              <div className="flex gap-2">
+                <button className="btn-ghost" onClick={() => preview(v.model, v.speaker)} disabled={!!playing}>
+                  {playing === v.speaker ? 'Playing…' : '▶ Listen'}
+                </button>
+                {chosen ? (
+                  <span className="self-center text-sage">Her voice ✓</span>
+                ) : (
+                  <button
+                    className="btn-primary"
+                    onClick={async () => {
+                      const r = await api.studio.setVoice(v.model, v.speaker);
+                      setVoiceState({ model: r.model, speaker: r.speaker });
+                    }}
+                  >
+                    Use this voice
+                  </button>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      {note && <p className="mt-3 text-sm text-umber">{note}</p>}
     </div>
   );
 }

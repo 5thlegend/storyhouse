@@ -47,6 +47,16 @@ import {
   saveHerArt,
 } from '../house/artstudio.js';
 import { transcribe } from '../ai/whisper.js';
+import { getVoice, setVoice, synthesize } from '../ai/tts.js';
+import { cleanHeard, getHerName, houseContext, setHerName } from '../house/talk.js';
+import {
+  consolidate,
+  endConversation,
+  herWords,
+  respondStream,
+  startConversation,
+  trimLastReply,
+} from '../memory/pipeline.js';
 import {
   addClassics,
   deleteRecipe,
@@ -236,6 +246,112 @@ house.post('/house/kitchen/:id/cooked', allow('grandma', 'studio'), async (c) =>
   return c.json({ photo });
 });
 
+// ---------- her voice ----------
+const ttsSchema = z.object({
+  text: z.string().min(1).max(1200),
+  // Only the Studio may preview other voices; her iPad always uses the chosen one.
+  model: z.enum(['aura-2', 'aura-1']).optional(),
+  speaker: z.string().regex(/^[a-z]+$/).max(20).optional(),
+});
+house.post('/house/tts', allow('grandma', 'studio', 'family'), async (c) => {
+  const { text, model, speaker } = ttsSchema.parse(await c.req.json());
+  const preview = c.get('role') === 'studio' && model && speaker ? { model, speaker } : undefined;
+  try {
+    const { bytes } = await synthesize(text, preview);
+    return new Response(bytes, { headers: { 'Content-Type': 'audio/mpeg', 'Cache-Control': 'private, max-age=86400' } });
+  } catch (err) {
+    console.warn('[tts] failed:', (err as any)?.message);
+    // The iPad falls back to its built-in voice.
+    return c.json({ error: 'voice unavailable' }, 503);
+  }
+});
+
+house.get('/house/voice', allow('grandma', 'studio', 'family'), async (c) =>
+  c.json({ ...(await getVoice()), herName: await getHerName() }),
+);
+
+// ---------- "Talk with me" ----------
+// One turn: her voice (or text, for testing) in; Server-Sent Events out —
+// `conv` (the conversation id), `heard` (what Whisper wrote down), then the
+// reply as `token`s, sentence by sentence on her iPad as it arrives.
+const convId = z.string().regex(/^conv_[\w-]{4,40}$/);
+const localSchema = z.object({
+  date: dateSchema,
+  time: z.string().max(20).optional(),
+  weekday: z.string().max(12).optional(),
+});
+house.post('/house/talk', allow('grandma', 'studio'), async (c) => {
+  if (tooBig(c, MAX_AUDIO_BYTES)) return c.json({ error: 'That was too long to hear.' }, 413);
+  const form = await c.req.formData();
+  const local = localSchema.safeParse({
+    date: form.get('date'),
+    time: form.get('time') || undefined,
+    weekday: form.get('weekday') || undefined,
+  });
+  if (!local.success) return c.json({ error: 'Missing date.' }, 400);
+  const given = convId.safeParse(form.get('conversation'));
+  const cutAt = form.get('heardBeforeCut');
+  const audio = form.get('audio');
+  const typed = typeof form.get('text') === 'string' ? String(form.get('text')).slice(0, 2000) : '';
+
+  const { readable, writable } = new TransformStream<Uint8Array, Uint8Array>();
+  const writer = writable.getWriter();
+  const enc = new TextEncoder();
+  const send = (ev: object) => writer.write(enc.encode(`data: ${JSON.stringify(ev)}\n\n`));
+
+  c.executionCtx.waitUntil(
+    (async () => {
+      try {
+        let heard = typed;
+        if (!heard && audio instanceof File && audio.size > 0) {
+          try {
+            heard = await transcribe(await audio.arrayBuffer());
+          } catch (err) {
+            console.warn('[talk] listening failed:', (err as any)?.message);
+          }
+        }
+        heard = cleanHeard(heard);
+        const id = given.success ? given.data : await startConversation();
+        await send({ type: 'conv', id });
+        await send({ type: 'heard', text: heard });
+        if (!heard) return void (await send({ type: 'done' }));
+
+        if (given.success && typeof cutAt === 'string') await trimLastReply(id, cutAt.slice(0, 2000));
+        const house = await houseContext(local.data);
+        for await (const ev of respondStream(id, heard, { house, historyLimit: 14 })) await send(ev);
+      } catch (err) {
+        console.error('[talk] error:', (err as any)?.message ?? err);
+        await send({ type: 'error' }).catch(() => {});
+      } finally {
+        await writer.close().catch(() => {});
+      }
+    })(),
+  );
+  return new Response(readable, {
+    headers: { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', 'X-Accel-Buffering': 'no' },
+  });
+});
+
+// She said yes to keeping what she told. Saved for the family, labeled as her own words.
+house.post('/house/talk/keep', allow('grandma', 'studio'), async (c) => {
+  const { conversation } = z.object({ conversation: convId }).parse(await c.req.json());
+  const words = await herWords(conversation);
+  if (words.split(/\s+/).length < 8) return c.json({ saved: false });
+  try {
+    const mem = await consolidate(words, { conversationId: conversation, force: true });
+    return c.json({ saved: !!mem, title: mem?.title ?? null });
+  } catch (err) {
+    console.warn('[talk] keep failed:', (err as any)?.message);
+    return c.json({ saved: false });
+  }
+});
+
+house.post('/house/talk/end', allow('grandma', 'studio'), async (c) => {
+  const { conversation } = z.object({ conversation: convId }).parse(await c.req.json());
+  await endConversation(conversation);
+  return c.json({ ok: true });
+});
+
 house.get('/house/today', allow('grandma', 'studio', 'family'), async (c) => {
   const date = dateSchema.parse(c.req.query('date'));
   return c.json(await getToday(date));
@@ -297,7 +413,7 @@ studio.delete('/photos/:id', async (c) => {
 
 function audioMime(c: { req: { header: (n: string) => string | undefined } }): string | null {
   const mime = (c.req.header('content-type') ?? '').split(';')[0].trim();
-  return /^audio\/(mp4|x-m4a|aac|webm|ogg|mpeg)$/.test(mime) ? mime : null;
+  return /^audio\/(mp4|x-m4a|aac|webm|ogg|mpeg|wav)$/.test(mime) ? mime : null;
 }
 
 function recordedBy(c: { req: { header: (n: string) => string | undefined } }): string | null {
@@ -429,6 +545,20 @@ studio.put('/recipes/:id/image', async (c) => {
   if (tooBig(c, MAX_IMAGE_BYTES)) return c.json({ error: 'That image is too large (15 MB max).' }, 413);
   const recipe = await uploadRecipeImage(c.req.param('id'), await c.req.arrayBuffer(), mime);
   return recipe ? c.json({ recipe }) : c.json({ error: 'Recipe not found.' }, 404);
+});
+
+// Her companion's voice
+const voiceSchema = z.object({ model: z.enum(['aura-2', 'aura-1']), speaker: z.string().regex(/^[a-z]+$/).max(20) });
+studio.put('/voice', async (c) => {
+  await setVoice(voiceSchema.parse(await c.req.json()));
+  return c.json({ ...(await getVoice()), herName: await getHerName() });
+});
+
+// What her companion calls her ("Grandma", "Nana", "Ruth")
+studio.put('/her-name', async (c) => {
+  const { name } = z.object({ name: z.string().min(1).max(60) }).parse(await c.req.json());
+  await setHerName(name);
+  return c.json({ ...(await getVoice()), herName: await getHerName() });
 });
 
 // Today card

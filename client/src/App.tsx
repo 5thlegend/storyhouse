@@ -4,13 +4,14 @@
 //   studio  → the Family Studio (plus the Storyhouse rooms and an iPad preview)
 //   family  → the read-only Family View
 
-import { useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { api } from './api';
 import { useApp } from './store';
 import { LockScreen } from './components/LockScreen';
 import { GrandmaHome } from './house/GrandmaHome';
-import { StudioShell } from './studio/StudioShell';
-import { StoryhouseApp } from './StoryhouseApp';
+// Her iPad never downloads the Studio or the Storyhouse rooms.
+const StudioShell = lazy(() => import('./studio/StudioShell').then((m) => ({ default: m.StudioShell })));
+const StoryhouseApp = lazy(() => import('./StoryhouseApp').then((m) => ({ default: m.StoryhouseApp })));
 
 export default function App() {
   const { session, setSession } = useApp();
@@ -35,8 +36,10 @@ export default function App() {
     <div className="relative z-10 flex h-[100dvh] flex-col overflow-hidden">
       {session.role === 'none' && <LockScreen />}
       {session.role === 'grandma' && <GrandmaHome />}
-      {session.role === 'studio' && <StudioShell />}
-      {session.role === 'family' && <StoryhouseApp />}
+      <Suspense fallback={null}>
+        {session.role === 'studio' && <StudioShell />}
+        {session.role === 'family' && <StoryhouseApp />}
+      </Suspense>
     </div>
   );
 }

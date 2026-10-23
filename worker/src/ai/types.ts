@@ -10,6 +10,8 @@ export interface RetrievedContext {
     when: string | null;
     confidence: string;
   }[];
+  /** Facts about her day and family for her iPad (today's date, visitors, who's who) and how to speak. */
+  house?: string;
 }
 
 export interface AIProvider {

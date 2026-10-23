@@ -23,7 +23,7 @@ export function config() {
     // workers-ai = Gemma 4 on the family's own Cloudflare account; ollama = Gemma 3
     // on a local machine; mock = honest offline mode.
     aiProvider: (env.AI_PROVIDER || 'workers-ai') as 'anthropic' | 'workers-ai' | 'ollama' | 'mock',
-    anthropicModel: env.ANTHROPIC_MODEL || 'claude-haiku-5-5',
+    anthropicModel: env.ANTHROPIC_MODEL || 'claude-sonnet-5-5',
     aiModel: env.AI_MODEL || '@cf/google/gemma-4-26b-a4b-it',
     embedModel: env.EMBED_MODEL || '@cf/google/embeddinggemma-300m',
     imageModel: env.IMAGE_MODEL || '@cf/black-forest-labs/flux-2-klein-4b',

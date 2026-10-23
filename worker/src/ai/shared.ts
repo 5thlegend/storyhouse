@@ -15,12 +15,18 @@ function mapRole(role: ChatTurn['role']): ChatRole {
 }
 
 export function buildContextBlock(ctx: RetrievedContext): string {
+  return memoriesBlock(ctx) + (ctx.house ? `\n\n${ctx.house}` : '');
+}
+
+function memoriesBlock(ctx: RetrievedContext): string {
   if (!ctx.memories.length) {
     return (
       'RETRIEVED MEMORIES: NONE.\n' +
       'Her archive has nothing about what she just said. You do NOT know about this topic. ' +
       'Do NOT invent, describe, or guess any people, places, trips, dates or details. ' +
-      "Gently tell her you don't have that one saved yet, and warmly invite her to tell you about it."
+      "If she asks you to recall something from her life, gently say you don't have that one yet, " +
+      'and warmly invite her to tell you about it. For everyday chat (how she feels, her day, what ' +
+      "she's cooking), just talk naturally and kindly; don't mention your archive at all."
     );
   }
   const lines = ctx.memories.map((m, i) => {

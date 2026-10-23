@@ -12,8 +12,10 @@ import type {
   RespondResult,
   Role,
   Session,
+  TalkEvent,
   TodayNote,
   VaultStats,
+  VoiceInfo,
 } from './types';
 
 const BASE = '/api';
@@ -195,8 +197,68 @@ export const api = {
     }).then(j<{ photo: AlbumPhoto }>);
   },
 
+  // ---------- "Talk with me" ----------
+  /** Her companion's voice and what it calls her. */
+  voice: () => fetch(`${BASE}/house/voice`).then(j<VoiceInfo>),
+
+  /**
+   * One turn of conversation: her voice in, the reply streamed back. Events
+   * arrive in order: conv, heard, (meta), token…, done | error.
+   */
+  talk: async (
+    input: { audio?: Blob; text?: string; conversation: string | null; heardBeforeCut?: string | null },
+    onEvent: (ev: TalkEvent) => void,
+    signal?: AbortSignal,
+  ) => {
+    const now = new Date();
+    const form = new FormData();
+    if (input.audio) form.set('audio', input.audio, 'her-words.wav');
+    if (input.text) form.set('text', input.text);
+    if (input.conversation) form.set('conversation', input.conversation);
+    if (input.heardBeforeCut != null) form.set('heardBeforeCut', input.heardBeforeCut);
+    form.set('date', `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`);
+    form.set('time', now.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }));
+    form.set('weekday', now.toLocaleDateString('en-US', { weekday: 'long' }));
+    const res = await fetch(`${BASE}/house/talk`, { method: 'POST', body: form, signal });
+    if (!res.ok || !res.body) throw new Error('talk failed');
+    const reader = res.body.getReader();
+    const dec = new TextDecoder();
+    let buf = '';
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buf += dec.decode(value, { stream: true });
+      let i: number;
+      while ((i = buf.indexOf('\n\n')) !== -1) {
+        const line = buf.slice(0, i).trim();
+        buf = buf.slice(i + 2);
+        if (line.startsWith('data:')) onEvent(JSON.parse(line.slice(5)) as TalkEvent);
+      }
+    }
+  },
+
+  keepStory: (conversation: string) =>
+    post<{ saved: boolean; title: string | null }>('/house/talk/keep', { conversation }),
+
+  endTalk: (conversation: string) => post<{ ok: boolean }>('/house/talk/end', { conversation }),
+
   // ---------- the Family Studio ----------
   studio: {
+    /** Hear a voice before choosing it (Studio only). */
+    previewVoice: (text: string, model: string, speaker: string) =>
+      fetch(`${BASE}/house/tts`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text, model, speaker }),
+      }).then((r) => {
+        if (!r.ok) throw new Error('That voice is resting right now.');
+        return r.blob();
+      }),
+
+    setVoice: (model: string, speaker: string) => send<VoiceInfo>('PUT', '/studio/voice', { model, speaker }),
+
+    setHerName: (name: string) => send<VoiceInfo>('PUT', '/studio/her-name', { name }),
+
     photos: () => fetch(`${BASE}/studio/photos`).then(j<{ photos: AlbumPhoto[] }>),
 
     upload: (

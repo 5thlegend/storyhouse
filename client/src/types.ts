@@ -205,3 +205,18 @@ export interface Painting {
   url: string;
   title?: string;
 }
+
+// ---------- "Talk with me" ----------
+export interface VoiceInfo {
+  model: 'aura-2' | 'aura-1';
+  speaker: string;
+  herName: string;
+}
+
+export type TalkEvent =
+  | { type: 'conv'; id: string }
+  | { type: 'heard'; text: string }
+  | { type: 'meta'; usedMemories: { id: string; title: string; score: number }[]; openModelOnline: boolean }
+  | { type: 'token'; text: string }
+  | { type: 'done' }
+  | { type: 'error' };

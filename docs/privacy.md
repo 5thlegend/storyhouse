@@ -10,14 +10,21 @@ Storyhouse's default principle is **minimize data** and **keep it in the family'
   then stay on that machine.
 
 ## What reaches an AI model
-- **Conversation and memory structuring use Claude Haiku 5.5 by Anthropic**, through the family's
-  own API key. That means her words in the Living Room (and the few retrieved memories that ground
-  a reply) are sent to Anthropic to produce each answer. Anthropic doesn't train its models on API
+- **Conversation and memory structuring use Claude Sonnet 5.5 by Anthropic**, through the family's
+  own API key. That means her words in "Talk with me" and the Living Room (and the few retrieved
+  memories, today's visitors and note, and the names of the people in her photos that ground a reply)
+  are sent to Anthropic to produce each answer. Anthropic doesn't train its models on API
   data by default. If Claude is unavailable, the same request goes to open-weight **Gemma 4** in the
   family's Cloudflare account instead.
 - For a setup where nothing leaves the family's own infrastructure, set `AI_PROVIDER=workers-ai`
   (Gemma 4 only) or run fully local with `AI_PROVIDER=ollama`.
 - Memory search always uses open-weight **EmbeddingGemma** in the family's Cloudflare account.
+- **Her voice:** in "Talk with me" the microphone is open only while she is in that room, and rests
+  after two quiet minutes. What she says is turned into text by open **Whisper** in the family's
+  Cloudflare account; the audio itself is never stored. The companion's spoken voice is
+  **Deepgram Aura** on Workers AI (the family's account): a natural synthetic voice, never a clone of a
+  relative. Spoken sentences are cached in the family's R2 bucket so repeated phrases are instant.
+- A conversation becomes a saved story only when she taps "Keep this story".
 - Only the text needed for one request is sent: her message, a few retrieved memories, or a
   passage to structure.
 - Memory art and on-the-spot coloring pages send only a scene description (a memory's title or

@@ -36,7 +36,7 @@
     // anthropic (Claude, Gemma 4 fallback) | workers-ai | ollama | mock.
     // anthropic needs the ANTHROPIC_API_KEY secret; without it, Gemma 4 runs.
     "AI_PROVIDER": "anthropic",
-    "ANTHROPIC_MODEL": "claude-haiku-5-5",
+    "ANTHROPIC_MODEL": "claude-sonnet-5-5",
     "AI_MODEL": "@cf/google/gemma-4-26b-a4b-it",
     "EMBED_MODEL": "@cf/google/embeddinggemma-300m",
     "IMAGE_MODEL": "@cf/black-forest-labs/flux-2-klein-4b",

@@ -44,6 +44,11 @@ Home Screen app. There are two sides to it:
   **Tap a face to hear who it is.** Family members' own recorded voices play with their photos
   ("Hi Grandma, it's me…"). There are no menus, no timers, no wrong taps, and nothing ever asks her
   "do you remember?".
+- **Talk with me on her iPad:** a hands-free conversation with a warm, friendly companion voice
+  (Deepgram Aura-2 "Luna"), powered by Claude Sonnet 5.5. She just talks; it listens patiently,
+  knows today's date, visitors and who's who in her family, and answers in a few short sentences.
+  If she talks over it, it softens at once, finishes only its sentence, then listens. Softer /
+  Louder buttons, and "Keep this story" when she's told something worth saving.
 - **Art Studio on her iPad**, three creative spaces: **Make a picture** (she *says* what she'd like
   to see, checks what was heard, and open Flux paints it), **Draw, and I'll paint it** (her finger
   drawing becomes a finished painting with the same subject and layout; both are kept), and
@@ -170,7 +175,7 @@ Vars live in [`worker/wrangler.jsonc`](./worker/wrangler.jsonc); secrets are set
 | Name | Default | Purpose |
 | --- | --- | --- |
 | `AI_PROVIDER` | `anthropic` | `anthropic` (Claude, Gemma 4 fallback), `workers-ai` (open models only), `ollama` (local), or `mock` |
-| `ANTHROPIC_MODEL` | `claude-haiku-5-5` | Claude model for conversation and memory structuring |
+| `ANTHROPIC_MODEL` | `claude-sonnet-5-5` | Claude model for conversation and memory structuring |
 | `AI_MODEL` | `@cf/google/gemma-4-26b-a4b-it` | open-weight conversational model |
 | `EMBED_MODEL` | `@cf/google/embeddinggemma-300m` | open embedding model for memory search |
 | `IMAGE_MODEL` | `@cf/black-forest-labs/flux-1-schnell` | open image model for labeled memory art |
@@ -225,7 +230,7 @@ A future physical "Storyhouse" device (Raspberry Pi / microphone / speaker / a r
 ## Limitations (honest)
 
 - First conversation turn after idle is slower while the model loads into VRAM; turns are fast once warm.
-- Voice input uses the browser's Web Speech API (quality varies by browser; unreliable in iPad Home Screen apps). Whisper on Workers AI is the planned voice-in for the iPad companion (Phase 3).
+- Her iPad uses Whisper (voice in) and Deepgram Aura-2 (voice out) on Workers AI. The family-side Living Room still uses the browser's Web Speech API.
 - Memory art uses open Flux.1 [schnell] on Workers AI when hosted; locally it falls back to a labeled interpretation card.
 - Novelty/curiosity engines are present but intentionally light in the MVP.
 

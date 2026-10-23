@@ -1,4 +1,4 @@
-import { all, run, nowIso, cryptoId, audit } from '../db.js';
+import { all, first, run, nowIso, cryptoId, audit } from '../db.js';
 import { getProvider } from '../ai/index.js';
 import type { AIProvider, RetrievedContext } from '../ai/index.js';
 import type { ChatTurn, EntityKind, ExtractedMemory, Memory } from '../types.js';
@@ -87,14 +87,19 @@ export type StreamEvent =
   | { type: 'done' }
   | { type: 'error' };
 
-export async function* respondStream(conversationId: string, grandmaText: string): AsyncGenerator<StreamEvent> {
+export async function* respondStream(
+  conversationId: string,
+  grandmaText: string,
+  opts: { house?: string; historyLimit?: number } = {},
+): AsyncGenerator<StreamEvent> {
   await saveMessage(conversationId, 'grandma', grandmaText);
   const { provider, status } = await getProvider();
   const { used, context } = await retrieve(provider, grandmaText);
+  context.house = opts.house;
 
   yield { type: 'meta', usedMemories: used, openModelOnline: status.openModelOnline };
 
-  const history = await recentHistory(conversationId);
+  const history = await recentHistory(conversationId, opts.historyLimit);
   let full = '';
   try {
     if (provider.converseStream) {
@@ -111,6 +116,33 @@ export async function* respondStream(conversationId: string, grandmaText: string
   } catch {
     yield { type: 'error' };
   }
+}
+
+/**
+ * She started talking before the reply finished. Keep only what she actually
+ * heard, so the companion never thinks it said something she missed.
+ */
+export async function trimLastReply(conversationId: string, heard: string): Promise<void> {
+  const last = await first<{ id: string; role: string }>(
+    `SELECT id, role FROM conversation_messages WHERE conversation_id = ? ORDER BY created_at DESC LIMIT 1`,
+    conversationId,
+  );
+  if (last?.role !== 'storyhouse') return;
+  const text = heard.trim();
+  await run(
+    `UPDATE conversation_messages SET text = ? WHERE id = ?`,
+    text ? `${text} [she started talking here, so the rest went unsaid]` : '[she started talking right away]',
+    last.id,
+  );
+}
+
+/** Everything she said in one conversation, in order (what "keep this story" saves). */
+export async function herWords(conversationId: string): Promise<string> {
+  const rows = await all<{ text: string }>(
+    `SELECT text FROM conversation_messages WHERE conversation_id = ? AND role = 'grandma' ORDER BY created_at`,
+    conversationId,
+  );
+  return rows.map((r) => r.text.trim()).filter(Boolean).join(' ');
 }
 
 // ---------- consolidation: turn words into a structured memory ----------
