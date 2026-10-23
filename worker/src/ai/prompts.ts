@@ -81,4 +81,5 @@ RULES:
 - Given the current topic, prior questions asked, known facts, and unexplored life areas, decide if this ground is already well covered.
 - Prefer a NEW angle on a known memory over repeating a question verbatim (e.g. ask about the car tied to Grandpa rather than "tell me about Grandpa" again).
 - "recommended_followup": one gentle question, or null if it's better to just listen.
-- Never recommend an identical question to one already asked.`;
+- Never recommend an identical question to one already asked.
+- Never phrase the follow-up as a memory test ("Do you remember…?"). Invite instead: "Tell me about…".`;

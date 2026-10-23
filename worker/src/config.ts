@@ -6,6 +6,7 @@ export interface Secrets {
   STUDIO_PASSCODE?: string;
   FAMILY_PASSCODE?: string;
   SESSION_SECRET?: string;
+  ANTHROPIC_API_KEY?: string;
 }
 export type AppEnv = Env & Secrets;
 
@@ -18,9 +19,11 @@ function bool(v: string | undefined, fallback: boolean): boolean {
 
 export function config() {
   return {
-    // Open-weight AI core. workers-ai = Gemma 4 on the family's own Cloudflare
-    // account; ollama = Gemma 3 on a local machine; mock = honest offline mode.
-    aiProvider: (env.AI_PROVIDER || 'workers-ai') as 'workers-ai' | 'ollama' | 'mock',
+    // The AI core. anthropic = Claude (with Gemma 4 as the automatic fallback);
+    // workers-ai = Gemma 4 on the family's own Cloudflare account; ollama = Gemma 3
+    // on a local machine; mock = honest offline mode.
+    aiProvider: (env.AI_PROVIDER || 'workers-ai') as 'anthropic' | 'workers-ai' | 'ollama' | 'mock',
+    anthropicModel: env.ANTHROPIC_MODEL || 'claude-haiku-5-5',
     aiModel: env.AI_MODEL || '@cf/google/gemma-4-26b-a4b-it',
     embedModel: env.EMBED_MODEL || '@cf/google/embeddinggemma-300m',
     imageModel: env.IMAGE_MODEL || '@cf/black-forest-labs/flux-1-schnell',

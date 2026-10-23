@@ -153,7 +153,8 @@ Vars live in [`worker/wrangler.jsonc`](./worker/wrangler.jsonc); secrets are set
 
 | Name | Default | Purpose |
 | --- | --- | --- |
-| `AI_PROVIDER` | `workers-ai` | `workers-ai` (open models, family's account), `ollama` (local), or `mock` |
+| `AI_PROVIDER` | `anthropic` | `anthropic` (Claude, Gemma 4 fallback), `workers-ai` (open models only), `ollama` (local), or `mock` |
+| `ANTHROPIC_MODEL` | `claude-haiku-5-5` | Claude model for conversation and memory structuring |
 | `AI_MODEL` | `@cf/google/gemma-4-26b-a4b-it` | open-weight conversational model |
 | `EMBED_MODEL` | `@cf/google/embeddinggemma-300m` | open embedding model for memory search |
 | `IMAGE_MODEL` | `@cf/black-forest-labs/flux-1-schnell` | open image model for labeled memory art |
@@ -161,6 +162,7 @@ Vars live in [`worker/wrangler.jsonc`](./worker/wrangler.jsonc); secrets are set
 | `STUDIO_PASSCODE` | — (secret) | the Family Studio passcode. Without it nobody can get in |
 | `SESSION_SECRET` | — (secret) | signs session cookies |
 | `FAMILY_PASSCODE` | — (secret, optional) | read-only Family View |
+| `ANTHROPIC_API_KEY` | — (secret) | your Anthropic key. Without it, Gemma 4 runs |
 
 ---
 

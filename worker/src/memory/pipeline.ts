@@ -154,8 +154,9 @@ export async function consolidate(
     tags: [],
     status: ex.is_unfinished ? 'unfinished' : 'saved',
     visibility: 'FAMILY',
+    // Name the model that actually structured it (Claude, or Gemma if it fell back).
     provenance: status.openModelOnline
-      ? `Spoken by ${opts.speaker ?? 'Grandma'}; structured by open model (${status.model}).`
+      ? `Spoken by ${opts.speaker ?? 'Grandma'}; structured by AI (${'lastModel' in provider ? provider.lastModel : status.model}).`
       : `Spoken by ${opts.speaker ?? 'Grandma'}; captured while AI core offline.`,
     consent_state: 'granted',
     conversation_id: opts.conversationId ?? null,

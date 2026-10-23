@@ -46,9 +46,9 @@ export function Vault() {
       <div className="card mb-6">
         <h3 className="mb-3 font-serif text-2xl text-cocoa">Your archive, your ownership</h3>
         <p className="mb-4 text-ink/90">
-          Storyhouse runs its intelligence on an <strong>open-weight model</strong>, and the Memory
-          Vault is a plain database you can export and keep forever. Download everything — in her own
-          words — any time.
+          Storyhouse’s AI is <strong>swappable</strong>: Claude by Anthropic, with open-weight Gemma
+          as the backup, or Gemma alone. The Memory Vault is a plain database the family owns, never
+          the AI company. Download everything — in her own words — any time.
         </p>
         <div className="flex flex-wrap gap-3">
           <a className="btn-primary" href={api.exportPdfUrl} download>
@@ -87,7 +87,8 @@ export function Vault() {
         <ul className="space-y-2 text-ink/90">
           <li>
             🔒 Memories live in the family’s own Cloudflare account (or on this machine, when run
-            locally) and are never used to train any model.
+            locally). Her conversation turns are sent to the AI model only to answer her, and are
+            never used to train any model.
           </li>
           <li>🎙️ The microphone only listens when you tap it. Nothing is recorded in secret.</li>
           <li>🧭 Every memory shows where it came from — her words, an estimate, or an AI inference.</li>

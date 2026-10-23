@@ -1,13 +1,28 @@
 # The AI layer
 
-## Models (all open-weight)
+## Models
 
-| Job | Hosted (Workers AI, the family's account) | Fully local (Ollama) |
-| --- | --- | --- |
-| Conversation & extraction | `@cf/google/gemma-4-26b-a4b-it` | `gemma3:4b` |
-| Embeddings (memory search) | `@cf/google/embeddinggemma-300m` | `nomic-embed-text` |
-| Memory art | `@cf/black-forest-labs/flux-1-schnell` | labeled SVG interpretation card |
+| Job | Default (`AI_PROVIDER=anthropic`) | Open-weight (`workers-ai`) | Fully local (`ollama`) |
+| --- | --- | --- | --- |
+| Conversation & extraction | Claude Haiku 5.5, Gemma 4 as fallback | `@cf/google/gemma-4-26b-a4b-it` | `gemma3:4b` |
+| Embeddings (memory search) | `@cf/google/embeddinggemma-300m` | `@cf/google/embeddinggemma-300m` | `nomic-embed-text` |
+| Memory art | `@cf/black-forest-labs/flux-1-schnell` | `@cf/black-forest-labs/flux-1-schnell` | labeled SVG interpretation card |
 
+### Claude (default)
+Conversation and memory structuring run on **Claude Haiku 5.5** (`ANTHROPIC_MODEL`) through the
+family's own Anthropic API key (`ANTHROPIC_API_KEY` secret). Chosen for warmth and instruction
+following at low cost. Details that matter in `worker/src/ai/claude.ts`:
+- `effort: "low"` keeps her replies quick; no `temperature` (Haiku 5.5 rejects it).
+- Memory extraction uses **structured outputs** (a JSON schema), so a story is never lost to
+  malformed JSON.
+- **Automatic fallback** (`worker/src/ai/fallback.ts`): if Claude errors, is rate-limited, or declines,
+  the same request goes to Gemma 4. A streamed reply only falls back before its first word. Each saved
+  memory's provenance names the model that actually structured it.
+- **Embeddings never switch**: memory search always uses EmbeddingGemma, so every saved memory stays
+  searchable whichever model is talking.
+- Without the `ANTHROPIC_API_KEY` secret, `anthropic` quietly runs on Gemma 4.
+
+### Gemma (open-weight)
 Gemma 3 is deprecated on Workers AI, so the hosted path uses **Gemma 4 26B-A4B**: a
 mixture-of-experts model with ~4B active parameters, so it answers about as fast as a 4B model
 (about 3 seconds per turn in testing) with the quality of a much larger one.

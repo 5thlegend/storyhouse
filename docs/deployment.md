@@ -63,6 +63,7 @@ cd worker
 npx wrangler secret put STUDIO_PASSCODE   # a long passphrase only the family knows
 npx wrangler secret put SESSION_SECRET    # any long random string
 npx wrangler secret put FAMILY_PASSCODE   # optional: read-only Family View
+npx wrangler secret put ANTHROPIC_API_KEY # Claude for conversation (Gemma 4 runs without it)
 cd ..
 
 # 4. Build the app and deploy.

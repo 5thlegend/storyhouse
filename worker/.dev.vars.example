@@ -7,3 +7,6 @@ SESSION_SECRET=change-me-to-a-long-random-string
 
 # Fully offline: use Gemma 3 on this machine through Ollama instead of Workers AI.
 # AI_PROVIDER=ollama
+
+# Claude for conversation (default AI_PROVIDER=anthropic). Without a key, Gemma 4 runs.
+# ANTHROPIC_API_KEY=sk-ant-...

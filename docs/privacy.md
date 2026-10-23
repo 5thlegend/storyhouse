@@ -10,9 +10,16 @@ Storyhouse's default principle is **minimize data** and **keep it in the family'
   then stay on that machine.
 
 ## What reaches an AI model
-- The conversation model and embeddings are **open-weight models** (Gemma 4 + EmbeddingGemma on
-  Workers AI, or Gemma 3 + nomic-embed locally). Only the text needed for one request is sent:
-  her message, a few retrieved memories, or a passage to structure.
+- **Conversation and memory structuring use Claude Haiku 5.5 by Anthropic**, through the family's
+  own API key. That means her words in the Living Room (and the few retrieved memories that ground
+  a reply) are sent to Anthropic to produce each answer. Anthropic doesn't train its models on API
+  data by default. If Claude is unavailable, the same request goes to open-weight **Gemma 4** in the
+  family's Cloudflare account instead.
+- For a setup where nothing leaves the family's own infrastructure, set `AI_PROVIDER=workers-ai`
+  (Gemma 4 only) or run fully local with `AI_PROVIDER=ollama`.
+- Memory search always uses open-weight **EmbeddingGemma** in the family's Cloudflare account.
+- Only the text needed for one request is sent: her message, a few retrieved memories, or a
+  passage to structure.
 - Memory art sends only the scene description to the open Flux.1 model.
 - Photos and family voice recordings are **never** sent to a model.
 - Memory data is **never used to train any model**. No analytics. No tracking.
