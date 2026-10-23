@@ -160,3 +160,41 @@ export interface Device {
   created_at: string;
   last_seen_at: string | null;
 }
+
+// ---------- her Kitchen ----------
+
+/** Where a line came from. "safety" marks the app's own turn-it-off step. */
+export type RecipeSource = 'her_words' | 'card' | 'family' | 'classic' | 'safety';
+export type Care = 'oven_on' | 'stove_on' | 'knife' | 'hot' | 'heat_off' | null;
+
+export interface Ingredient {
+  text: string;
+  amount: string | null;
+  source: RecipeSource;
+}
+
+export interface RecipeStep {
+  text: string;
+  care: Care;
+  timer_minutes: number | null;
+  source: RecipeSource;
+}
+
+export interface Recipe {
+  id: string;
+  title: string;
+  origin: 'her_voice' | 'card' | 'classic';
+  status: 'draft' | 'published';
+  story: string | null;
+  transcript: string | null;
+  her_voice_url: string | null;
+  card_image_url: string | null;
+  image_url: string | null;
+  servings: string | null;
+  ingredients: Ingredient[];
+  steps: RecipeStep[];
+  cook_mode: 'together' | 'own';
+  helper: string | null;
+  created_at: string;
+  published_at: string | null;
+}

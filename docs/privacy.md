@@ -23,7 +23,13 @@ Storyhouse's default principle is **minimize data** and **keep it in the family'
 - Memory art and on-the-spot coloring pages send only a scene description (a memory's title or
   derived summary, never her raw words) to the open Flux model. Her Art Studio offers a fixed list of
   ideas; she never types a prompt, and at most 12 new pages are drawn per day.
-- Photos and family voice recordings are **never** sent to a model.
+- **Kitchen:** when she says yes to keeping a recipe she told, her recording is transcribed by open
+  Whisper on Workers AI, and the text is drafted into a recipe by Claude (Gemma 4 as fallback). Her
+  recording, her exact words and any recipe-card photo are kept unedited; nothing she didn't say is
+  filled in. A recipe-card photo is read by Claude (Gemma 4 as fallback).
+- The app cannot see her stove. Kitchen safety prompts help, but they are not a safety device; an
+  automatic stove shut-off is the dependable safeguard.
+- Album photos and family voice recordings are **never** sent to a model.
 - Memory data is **never used to train any model**. No analytics. No tracking.
 
 ## Who can see what

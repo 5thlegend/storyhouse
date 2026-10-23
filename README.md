@@ -49,6 +49,14 @@ Home Screen app. There are two sides to it:
   come from the family (made ahead, e.g. on Higgsfield Unlimited, then imported) or are drawn on the
   spot by open Flux 2 klein from ideas built from her own memories. She never types a prompt. What she
   paints is saved as "Made by Grandma" for the family to see.
+- **Kitchen on her iPad:** her recipe shelf. Each recipe offers "Tell me about it" (her own words,
+  and her own recorded voice), "What I need" (big tick-off checklist) and "Let's cook it" (one step per
+  screen, read aloud). Safety is set per recipe: **cook together** tells her to ask her helper for oven,
+  stove, knife and hot steps; **on her own** keeps "the oven is on" on screen until the turn-off step.
+  Every heated recipe ends with "Is the oven turned off?". She can tap **"Tell me how you make
+  something"** and just talk: Whisper transcribes it and Claude drafts the recipe, leaving anything she
+  didn't say blank. Family can also photograph her handwritten cards. A small set of classic **vegan**
+  recipes (no meat, gelatin, alcohol or coffee) is available as drafts to approve.
 - **The Family Studio** (passcode): upload photos and art (Higgsfield / Nano Banana / Flux pieces
   included), tag faces, write large-print captions, record voice messages, set today's visitors, and
   **publish to her iPad**. Drafts never reach her. AI art can't be published without saying who made

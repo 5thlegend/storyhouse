@@ -9,8 +9,9 @@ import { GrandmaHome } from '../house/GrandmaHome';
 import { PhotosPanel } from './PhotosPanel';
 import { PeoplePanel } from './PeoplePanel';
 import { IpadPanel } from './IpadPanel';
+import { KitchenPanel } from './KitchenPanel';
 
-type Tab = 'photos' | 'people' | 'ipad';
+type Tab = 'photos' | 'people' | 'kitchen' | 'ipad';
 
 const MODES: { id: StudioMode; label: string }[] = [
   { id: 'studio', label: '🎨 Studio' },
@@ -82,6 +83,7 @@ function Studio() {
   const tabs: { id: Tab; label: string }[] = [
     { id: 'photos', label: `Photos & art (${photos.length})` },
     { id: 'people', label: `People (${people.length})` },
+    { id: 'kitchen', label: 'Kitchen' },
     { id: 'ipad', label: 'Her iPad & Today' },
   ];
 
@@ -103,6 +105,7 @@ function Studio() {
         </div>
         {tab === 'photos' && <PhotosPanel photos={photos} people={people} reload={reload} />}
         {tab === 'people' && <PeoplePanel people={people} reload={reload} />}
+        {tab === 'kitchen' && <KitchenPanel />}
         {tab === 'ipad' && <IpadPanel />}
       </div>
     </div>

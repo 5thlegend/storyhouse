@@ -142,12 +142,24 @@ export class ClaudeProvider implements AIProvider {
     if (final.stop_reason === 'refusal') throw new ClaudeRefusalError('Claude declined this request.');
   }
 
-  private async structured(system: string, user: string, schema: object): Promise<any> {
+  /** Schema-guaranteed JSON. An optional image (e.g. a recipe card photo) goes before the text. */
+  async structured(
+    system: string,
+    user: string,
+    schema: object,
+    image?: { base64: string; mime: 'image/jpeg' | 'image/png' },
+  ): Promise<any> {
+    const content: Anthropic.ContentBlockParam[] = image
+      ? [
+          { type: 'image', source: { type: 'base64', media_type: image.mime, data: image.base64 } },
+          { type: 'text', text: user },
+        ]
+      : [{ type: 'text', text: user }];
     const message = await this.client.messages.create({
       model: config().anthropicModel,
-      max_tokens: 4000,
+      max_tokens: 8000,
       system,
-      messages: [{ role: 'user', content: user }],
+      messages: [{ role: 'user', content }],
       output_config: { effort: 'low', format: { type: 'json_schema', schema } },
     } as Anthropic.MessageCreateParamsNonStreaming);
     return JSON.parse(textOf(message));

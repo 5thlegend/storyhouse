@@ -7,6 +7,7 @@ import type {
   Memory,
   Person,
   PhotoKind,
+  Recipe,
   RespondResult,
   Role,
   Session,
@@ -141,6 +142,23 @@ export const api = {
 
   art: () => fetch(`${BASE}/house/art`).then(j<ArtStudioData>),
 
+  kitchen: () => fetch(`${BASE}/house/kitchen`).then(j<{ recipes: Recipe[] }>),
+
+  /** She told a recipe out loud and said yes, keep it. */
+  tellRecipe: (audio: Blob) =>
+    fetch(`${BASE}/house/kitchen/tell`, {
+      method: 'POST',
+      headers: { 'Content-Type': audio.type.split(';')[0] || 'audio/mp4' },
+      body: audio,
+    }).then(j<{ ok: boolean }>),
+
+  cookedPhoto: (recipeId: string, image: Blob, size: { width: number; height: number }) =>
+    fetch(`${BASE}/house/kitchen/${recipeId}/cooked?width=${size.width}&height=${size.height}`, {
+      method: 'POST',
+      headers: { 'Content-Type': image.type },
+      body: image,
+    }).then(j<{ photo: AlbumPhoto }>),
+
   /** Draw a new coloring page on the spot. photo is null when none could be drawn. */
   newPage: (idea: string) => post<{ photo: AlbumPhoto | null }>('/house/art/new', { idea }),
 
@@ -221,6 +239,35 @@ export const api = {
     devices: () => fetch(`${BASE}/studio/devices`).then(j<{ devices: Device[] }>),
 
     forgetDevice: (id: string) => send<{ ok: boolean }>('DELETE', `/studio/devices/${id}`),
+
+    recipes: () => fetch(`${BASE}/studio/recipes`).then(j<{ recipes: Recipe[] }>),
+
+    recipeFromCard: (image: Blob) =>
+      fetch(`${BASE}/studio/recipes/card`, {
+        method: 'POST',
+        headers: { 'Content-Type': image.type },
+        body: image,
+      }).then(j<{ recipe: Recipe }>),
+
+    addClassics: () => post<{ added: number }>('/studio/recipes/classics', {}),
+
+    updateRecipe: (
+      id: string,
+      patch: Partial<
+        Pick<Recipe, 'title' | 'story' | 'servings' | 'ingredients' | 'steps' | 'cook_mode' | 'helper' | 'status'>
+      >,
+    ) => send<{ recipe: Recipe }>('PATCH', `/studio/recipes/${id}`, patch),
+
+    deleteRecipe: (id: string) => send<{ ok: boolean }>('DELETE', `/studio/recipes/${id}`),
+
+    paintRecipe: (id: string) => post<{ recipe: Recipe }>(`/studio/recipes/${id}/paint`, {}),
+
+    recipeImage: (id: string, image: Blob) =>
+      fetch(`${BASE}/studio/recipes/${id}/image`, {
+        method: 'PUT',
+        headers: { 'Content-Type': image.type },
+        body: image,
+      }).then(j<{ recipe: Recipe }>),
   },
 };
 

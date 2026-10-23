@@ -7,7 +7,7 @@ import { useEffect, useRef, useState } from 'react';
 // iPad Safari only plays some formats; prefer MP4/AAC when the browser can record it.
 const MIME_PREFERENCE = ['audio/mp4', 'audio/webm;codecs=opus', 'audio/webm', 'audio/ogg'];
 
-function pickMime(): string | undefined {
+export function pickMime(): string | undefined {
   if (typeof MediaRecorder === 'undefined') return undefined;
   return MIME_PREFERENCE.find((m) => MediaRecorder.isTypeSupported(m));
 }

@@ -37,6 +37,18 @@ import {
   updatePhoto,
 } from '../house/album.js';
 import { NoPictureNow, artStudio, drawNewPage, saveHerArt } from '../house/artstudio.js';
+import {
+  addClassics,
+  deleteRecipe,
+  getRecipe,
+  listRecipes,
+  paintRecipeImage,
+  recipeFromCard,
+  recipeFromHerVoice,
+  saveCookedPhoto,
+  updateRecipe,
+  uploadRecipeImage,
+} from '../house/kitchen.js';
 
 export const house = new Hono<HonoEnv>();
 
@@ -127,6 +139,32 @@ house.post('/house/art/save', allow('grandma', 'studio'), async (c) => {
     caption: (c.req.query('caption') ?? '').slice(0, 120),
     painter: 'Grandma',
   });
+  return c.json({ photo });
+});
+
+// ---------- her Kitchen ----------
+house.get('/house/kitchen', allow('grandma', 'studio', 'family'), async (c) =>
+  c.json({ recipes: await listRecipes({ includeDrafts: false }) }),
+);
+
+// She told a recipe out loud and said "yes, keep it". Family reviews the draft.
+house.post('/house/kitchen/tell', allow('grandma', 'studio'), async (c) => {
+  const mime = audioMime(c);
+  if (!mime) return c.json({ error: 'Unsupported audio format.' }, 415);
+  if (tooBig(c, MAX_AUDIO_BYTES)) return c.json({ error: 'That recording is too long.' }, 413);
+  await recipeFromHerVoice(await c.req.arrayBuffer(), mime);
+  return c.json({ ok: true });
+});
+
+// "Take a picture of it!" — goes into the family album.
+house.post('/house/kitchen/:id/cooked', allow('grandma', 'studio'), async (c) => {
+  const mime = c.req.header('content-type') ?? '';
+  if (!/^image\/(png|jpeg)$/.test(mime)) return c.json({ error: 'Unsupported image.' }, 415);
+  if (tooBig(c, MAX_IMAGE_BYTES)) return c.json({ error: 'That picture is too large.' }, 413);
+  const recipe = await getRecipe(c.req.param('id'));
+  if (!recipe || recipe.status !== 'published') return c.json({ error: 'Recipe not found.' }, 404);
+  const num = (v: string | undefined) => (v && /^\d+$/.test(v) ? Number(v) : null);
+  const photo = await saveCookedPhoto(recipe.id, await c.req.arrayBuffer(), mime, num(c.req.query('width')), num(c.req.query('height')));
   return c.json({ photo });
 });
 
@@ -264,6 +302,65 @@ studio.put('/people/:id/voice', async (c) => {
 studio.delete('/people/:id/voice', async (c) => {
   const person = await clearPersonVoice(c.req.param('id'));
   return person ? c.json({ person }) : c.json({ error: 'Person not found.' }, 404);
+});
+
+// Recipes
+studio.get('/recipes', async (c) => c.json({ recipes: await listRecipes({ includeDrafts: true }) }));
+
+studio.post('/recipes/card', async (c) => {
+  const mime = c.req.header('content-type') ?? '';
+  if (mime !== 'image/jpeg' && mime !== 'image/png') return c.json({ error: 'Please upload a JPEG or PNG photo.' }, 415);
+  if (tooBig(c, MAX_IMAGE_BYTES)) return c.json({ error: 'That photo is too large (15 MB max).' }, 413);
+  return c.json({ recipe: await recipeFromCard(await c.req.arrayBuffer(), mime) });
+});
+
+studio.post('/recipes/classics', async (c) => c.json({ added: await addClassics() }));
+
+const sourceSchema = z.enum(['her_words', 'card', 'family', 'classic', 'safety']);
+const recipePatch = z.object({
+  title: z.string().min(1).max(120).optional(),
+  story: z.string().max(4000).nullable().optional(),
+  servings: z.string().max(80).nullable().optional(),
+  ingredients: z
+    .array(z.object({ text: z.string().min(1).max(200), amount: z.string().max(80).nullable(), source: sourceSchema }))
+    .max(60)
+    .optional(),
+  steps: z
+    .array(
+      z.object({
+        text: z.string().min(1).max(500),
+        care: z.enum(['oven_on', 'stove_on', 'knife', 'hot', 'heat_off']).nullable(),
+        timer_minutes: z.number().int().min(1).max(600).nullable(),
+        source: sourceSchema,
+      }),
+    )
+    .max(60)
+    .optional(),
+  cook_mode: z.enum(['together', 'own']).optional(),
+  helper: z.string().max(60).nullable().optional(),
+  status: z.enum(['draft', 'published']).optional(),
+});
+studio.patch('/recipes/:id', async (c) => {
+  const recipe = await updateRecipe(c.req.param('id'), recipePatch.parse(await c.req.json()));
+  return recipe ? c.json({ recipe }) : c.json({ error: 'Recipe not found.' }, 404);
+});
+
+studio.delete('/recipes/:id', async (c) => {
+  await deleteRecipe(c.req.param('id'));
+  return c.json({ ok: true });
+});
+
+studio.post('/recipes/:id/paint', async (c) => {
+  const recipe = await paintRecipeImage(c.req.param('id'));
+  return recipe ? c.json({ recipe }) : c.json({ error: 'Recipe not found.' }, 404);
+});
+
+studio.put('/recipes/:id/image', async (c) => {
+  const mime = c.req.header('content-type') ?? '';
+  if (!/^image\/(jpeg|png)$/.test(mime)) return c.json({ error: 'Please upload a JPEG or PNG image.' }, 415);
+  if (tooBig(c, MAX_IMAGE_BYTES)) return c.json({ error: 'That image is too large (15 MB max).' }, 413);
+  const recipe = await uploadRecipeImage(c.req.param('id'), await c.req.arrayBuffer(), mime);
+  return recipe ? c.json({ recipe }) : c.json({ error: 'Recipe not found.' }, 404);
 });
 
 // Today card

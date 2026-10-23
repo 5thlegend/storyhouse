@@ -58,6 +58,38 @@ export class WorkersAIProvider implements AIProvider {
     return stripThinking(textFrom(out));
   }
 
+  /** JSON from Gemma by instruction (no schema guarantee), parsed tolerantly. */
+  async json(system: string, user: string): Promise<any> {
+    const out = await this.chat(
+      [
+        { role: 'system', content: `${system}\n\nReturn ONLY one valid JSON object, no prose.` },
+        { role: 'user', content: user },
+      ],
+      { temperature: 0.1, maxTokens: 3000 },
+    );
+    return parseJsonObject(out);
+  }
+
+  /** Same, with an image (Gemma 4 can read pictures, e.g. a recipe card). */
+  async jsonWithImage(system: string, user: string, image: { base64: string; mime: string }): Promise<any> {
+    const out = await env.AI.run(config().aiModel as any, {
+      messages: [
+        { role: 'system', content: `${system}\n\nReturn ONLY one valid JSON object, no prose.` },
+        {
+          role: 'user',
+          content: [
+            { type: 'image_url', image_url: { url: `data:${image.mime};base64,${image.base64}` } },
+            { type: 'text', text: user },
+          ],
+        },
+      ],
+      temperature: 0.1,
+      max_tokens: 3000,
+      ...NO_THINKING,
+    } as any);
+    return parseJsonObject(stripThinking(textFrom(out)));
+  }
+
   async converse(
     history: ChatTurn[],
     context: RetrievedContext,
