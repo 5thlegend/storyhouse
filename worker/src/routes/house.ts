@@ -36,6 +36,7 @@ import {
   updatePerson,
   updatePhoto,
 } from '../house/album.js';
+import { NoPictureNow, artStudio, drawNewPage, saveHerArt } from '../house/artstudio.js';
 
 export const house = new Hono<HonoEnv>();
 
@@ -95,8 +96,39 @@ house.get('/health', allow('studio', 'family', 'grandma'), async (c) => {
 
 // ---------- her iPad (and family can look too) ----------
 house.get('/house/album', allow('grandma', 'studio', 'family'), async (c) =>
-  c.json({ photos: await listPhotos({ includeDrafts: false }) }),
+  c.json({ photos: await listPhotos({ includeDrafts: false, collection: 'album' }) }),
 );
+
+// ---------- her Art Studio ----------
+house.get('/house/art', allow('grandma', 'studio', 'family'), async (c) => c.json(await artStudio()));
+
+const ideaSchema = z.object({ idea: z.string().regex(/^(mem|theme):[\w-]+$/) });
+house.post('/house/art/new', allow('grandma', 'studio'), async (c) => {
+  const { idea } = ideaSchema.parse(await c.req.json());
+  try {
+    return c.json({ photo: await drawNewPage(idea, c.get('deviceId')) });
+  } catch (err) {
+    // No error screen for her: the iPad quietly offers a page from the library.
+    if (!(err instanceof NoPictureNow)) console.warn('[art] new page failed:', (err as any)?.message);
+    return c.json({ photo: null });
+  }
+});
+
+house.post('/house/art/save', allow('grandma', 'studio'), async (c) => {
+  const mime = c.req.header('content-type') ?? '';
+  if (!/^image\/(png|jpeg)$/.test(mime)) return c.json({ error: 'Unsupported image.' }, 415);
+  if (tooBig(c, MAX_IMAGE_BYTES)) return c.json({ error: 'That picture is too large.' }, 413);
+  const num = (v: string | undefined) => (v && /^\d+$/.test(v) ? Number(v) : null);
+  const photo = await saveHerArt({
+    bytes: await c.req.arrayBuffer(),
+    mime,
+    width: num(c.req.query('width')),
+    height: num(c.req.query('height')),
+    caption: (c.req.query('caption') ?? '').slice(0, 120),
+    painter: 'Grandma',
+  });
+  return c.json({ photo });
+});
 
 house.get('/house/today', allow('grandma', 'studio', 'family'), async (c) => {
   const date = dateSchema.parse(c.req.query('date'));
@@ -115,6 +147,7 @@ function tooBig(c: { req: { header: (n: string) => string | undefined } }, max: 
 studio.get('/photos', async (c) => c.json({ photos: await listPhotos({ includeDrafts: true }) }));
 
 const kindSchema = z.enum(['photo', 'family_art', 'ai_art']);
+const collectionSchema = z.enum(['album', 'coloring', 'her_art']);
 studio.post('/photos', async (c) => {
   const mime = c.req.header('content-type') ?? '';
   if (!/^image\/(jpeg|png|webp)$/.test(mime)) return c.json({ error: 'Please upload a JPEG, PNG or WebP image.' }, 415);
@@ -127,6 +160,8 @@ studio.post('/photos', async (c) => {
     height: num(c.req.query('height')),
     kind: kindSchema.catch('photo').parse(c.req.query('kind')),
     made_by: c.req.query('made_by') || null,
+    caption: (c.req.query('caption') ?? '').slice(0, 500),
+    collection: collectionSchema.catch('album').parse(c.req.query('collection')),
   });
   return c.json({ photo });
 });
@@ -137,6 +172,7 @@ const photoPatch = z.object({
   kind: kindSchema.optional(),
   made_by: z.string().max(120).nullable().optional(),
   status: z.enum(['draft', 'published']).optional(),
+  collection: collectionSchema.optional(),
 });
 studio.patch('/photos/:id', async (c) => {
   try {

@@ -20,7 +20,9 @@ Storyhouse's default principle is **minimize data** and **keep it in the family'
 - Memory search always uses open-weight **EmbeddingGemma** in the family's Cloudflare account.
 - Only the text needed for one request is sent: her message, a few retrieved memories, or a
   passage to structure.
-- Memory art sends only the scene description to the open Flux.1 model.
+- Memory art and on-the-spot coloring pages send only a scene description (a memory's title or
+  derived summary, never her raw words) to the open Flux model. Her Art Studio offers a fixed list of
+  ideas; she never types a prompt, and at most 12 new pages are drawn per day.
 - Photos and family voice recordings are **never** sent to a model.
 - Memory data is **never used to train any model**. No analytics. No tracking.
 

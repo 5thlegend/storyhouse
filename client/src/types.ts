@@ -92,6 +92,9 @@ export interface Session {
 
 export type PhotoKind = 'photo' | 'family_art' | 'ai_art';
 
+/** album = her photo album · coloring = the coloring library · her_art = what she painted. */
+export type Collection = 'album' | 'coloring' | 'her_art';
+
 export interface Face {
   id: string;
   person_id: string;
@@ -118,9 +121,22 @@ export interface AlbumPhoto {
   voice: { url: string; by: string | null } | null;
   faces: Face[];
   status: 'draft' | 'published';
+  collection: Collection;
   created_at: string;
   published_at: string | null;
   is_new: boolean;
+}
+
+export interface ArtIdea {
+  id: string;
+  title: string;
+}
+
+export interface ArtStudioData {
+  library: AlbumPhoto[];
+  mine: AlbumPhoto[];
+  ideas: ArtIdea[];
+  canDrawNew: boolean;
 }
 
 export interface Person {

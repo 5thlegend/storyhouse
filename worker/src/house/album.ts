@@ -6,6 +6,9 @@ import { all, first, run, nowIso, cryptoId, audit } from '../db.js';
 
 export type PhotoKind = 'photo' | 'family_art' | 'ai_art';
 
+/** album = her photo album · coloring = the coloring library · her_art = what she painted. */
+export type Collection = 'album' | 'coloring' | 'her_art';
+
 export interface Face {
   id: string;
   person_id: string;
@@ -33,6 +36,7 @@ export interface AlbumPhoto {
   voice: { url: string; by: string | null } | null;
   faces: Face[];
   status: 'draft' | 'published';
+  collection: Collection;
   created_at: string;
   published_at: string | null;
   is_new: boolean;
@@ -101,18 +105,26 @@ function rowToPhoto(r: any, faces: Face[]): AlbumPhoto {
     voice: r.voice_key ? { url: `/media/${r.voice_key}`, by: r.voice_by } : null,
     faces,
     status: r.status,
+    collection: r.collection ?? 'album',
     created_at: r.created_at,
     published_at: r.published_at,
     is_new: !!r.published_at && Date.now() - Date.parse(r.published_at) < NEW_FOR_MS,
   };
 }
 
-/** Her album: published only, newest first so a new photo from family greets her. */
-export async function listPhotos(opts: { includeDrafts: boolean }): Promise<AlbumPhoto[]> {
+/** Published only (unless drafts are asked for), newest first so new things from family greet her. */
+export async function listPhotos(opts: { includeDrafts: boolean; collection?: Collection }): Promise<AlbumPhoto[]> {
+  const where: string[] = [];
+  const params: unknown[] = [];
+  if (!opts.includeDrafts) where.push(`status = 'published'`);
+  if (opts.collection) {
+    where.push('collection = ?');
+    params.push(opts.collection);
+  }
   const rows = await all(
-    opts.includeDrafts
-      ? `SELECT * FROM photos ORDER BY (status = 'draft') DESC, COALESCE(published_at, created_at) DESC`
-      : `SELECT * FROM photos WHERE status = 'published' ORDER BY published_at DESC`,
+    `SELECT * FROM photos ${where.length ? `WHERE ${where.join(' AND ')}` : ''}
+     ORDER BY (status = 'draft') DESC, COALESCE(published_at, created_at) DESC`,
+    ...params,
   );
   const faces = await facesFor(rows.map((r) => r.id));
   return rows.map((r) => rowToPhoto(r, faces.get(r.id) ?? []));
@@ -145,6 +157,7 @@ export async function createPhoto(input: {
   when_text?: string | null;
   made_by?: string | null;
   status?: 'draft' | 'published';
+  collection?: Collection;
   created_by?: string;
 }): Promise<AlbumPhoto> {
   const id = cryptoId('pho');
@@ -154,8 +167,8 @@ export async function createPhoto(input: {
   const status = input.status ?? 'draft';
   await run(
     `INSERT INTO photos (id, image_key, image_mime, width, height, kind, caption, when_text, made_by,
-       is_ai_generated, status, created_by, created_at, updated_at, published_at)
-     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+       is_ai_generated, status, collection, created_by, created_at, updated_at, published_at)
+     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
     id,
     key,
     input.mime,
@@ -167,6 +180,7 @@ export async function createPhoto(input: {
     input.made_by ?? null,
     input.kind === 'ai_art' ? 1 : 0,
     status,
+    input.collection ?? 'album',
     input.created_by ?? 'studio',
     now,
     now,
@@ -186,6 +200,7 @@ export async function updatePhoto(
     kind?: PhotoKind;
     made_by?: string | null;
     status?: 'draft' | 'published';
+    collection?: Collection;
   },
 ): Promise<AlbumPhoto | null> {
   const cur = await first(`SELECT * FROM photos WHERE id = ?`, id);
@@ -204,13 +219,14 @@ export async function updatePhoto(
   const publishedAt = status === 'published' ? (cur.published_at ?? now) : null;
   await run(
     `UPDATE photos SET caption = ?, when_text = ?, kind = ?, made_by = ?, is_ai_generated = ?,
-       status = ?, published_at = ?, updated_at = ? WHERE id = ?`,
+       status = ?, collection = ?, published_at = ?, updated_at = ? WHERE id = ?`,
     patch.caption ?? cur.caption,
     patch.when_text !== undefined ? patch.when_text : cur.when_text,
     kind,
     madeBy,
     kind === 'ai_art' ? 1 : 0,
     status,
+    patch.collection ?? cur.collection ?? 'album',
     publishedAt,
     now,
     id,

@@ -1,5 +1,7 @@
 import type {
   AlbumPhoto,
+  ArtStudioData,
+  Collection,
   Device,
   Health,
   Memory,
@@ -137,18 +139,39 @@ export const api = {
 
   today: (date: string) => fetch(`${BASE}/house/today?date=${date}`).then(j<TodayNote>),
 
+  art: () => fetch(`${BASE}/house/art`).then(j<ArtStudioData>),
+
+  /** Draw a new coloring page on the spot. photo is null when none could be drawn. */
+  newPage: (idea: string) => post<{ photo: AlbumPhoto | null }>('/house/art/new', { idea }),
+
+  saveHerArt: (image: Blob, opts: { width: number; height: number; caption: string }) => {
+    const q = new URLSearchParams({ width: String(opts.width), height: String(opts.height), caption: opts.caption });
+    return fetch(`${BASE}/house/art/save?${q}`, {
+      method: 'POST',
+      headers: { 'Content-Type': image.type },
+      body: image,
+    }).then(j<{ photo: AlbumPhoto }>);
+  },
+
   // ---------- the Family Studio ----------
   studio: {
     photos: () => fetch(`${BASE}/studio/photos`).then(j<{ photos: AlbumPhoto[] }>),
 
     upload: (
       blob: Blob,
-      opts: { width: number; height: number; kind: PhotoKind; made_by?: string | null },
+      opts: {
+        width: number;
+        height: number;
+        kind: PhotoKind;
+        made_by?: string | null;
+        collection?: Collection;
+      },
     ) => {
       const q = new URLSearchParams({
         width: String(opts.width),
         height: String(opts.height),
         kind: opts.kind,
+        collection: opts.collection ?? 'album',
         ...(opts.made_by ? { made_by: opts.made_by } : {}),
       });
       return fetch(`${BASE}/studio/photos?${q}`, {
@@ -160,7 +183,7 @@ export const api = {
 
     updatePhoto: (
       id: string,
-      patch: Partial<Pick<AlbumPhoto, 'caption' | 'when_text' | 'kind' | 'made_by' | 'status'>>,
+      patch: Partial<Pick<AlbumPhoto, 'caption' | 'when_text' | 'kind' | 'made_by' | 'status' | 'collection'>>,
     ) => send<{ photo: AlbumPhoto }>('PATCH', `/studio/photos/${id}`, patch),
 
     deletePhoto: (id: string) => send<{ ok: boolean }>('DELETE', `/studio/photos/${id}`),

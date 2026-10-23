@@ -44,6 +44,11 @@ Home Screen app. There are two sides to it:
   **Tap a face to hear who it is.** Family members' own recorded voices play with their photos
   ("Hi Grandma, it's me…"). There are no menus, no timers, no wrong taps, and nothing ever asks her
   "do you remember?".
+- **Art Studio on her iPad:** pick a coloring page and color it. **Tap fills a whole shape**, so no
+  precision is needed; dragging paints with a big brush, and Undo / Start over are always there. Pages
+  come from the family (made ahead, e.g. on Higgsfield Unlimited, then imported) or are drawn on the
+  spot by open Flux 2 klein from ideas built from her own memories. She never types a prompt. What she
+  paints is saved as "Made by Grandma" for the family to see.
 - **The Family Studio** (passcode): upload photos and art (Higgsfield / Nano Banana / Flux pieces
   included), tag faces, write large-print captions, record voice messages, set today's visitors, and
   **publish to her iPad**. Drafts never reach her. AI art can't be published without saying who made

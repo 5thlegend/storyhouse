@@ -1,9 +1,10 @@
 // Upload photos and art, then open one to caption it, tag faces, record a
-// voice message, and publish it to her iPad.
+// voice message, and publish it to her iPad. Art can go to her photo album or to
+// her Art Studio's coloring library; her own paintings show up here too.
 
 import { useRef, useState } from 'react';
 import { api } from '../api';
-import type { AlbumPhoto, Person, PhotoKind } from '../types';
+import type { AlbumPhoto, Collection, Person, PhotoKind } from '../types';
 import { prepareImage } from './image';
 import { PhotoEditor } from './PhotoEditor';
 
@@ -11,6 +12,11 @@ export const KIND_LABELS: Record<PhotoKind, string> = {
   photo: 'Family photo',
   family_art: 'Drawing or art by family',
   ai_art: 'Art made with AI',
+};
+
+export const COLLECTION_LABELS: Record<Exclude<Collection, 'her_art'>, string> = {
+  album: 'Her photo album',
+  coloring: 'Coloring library (Art Studio)',
 };
 
 export function PhotosPanel({
@@ -23,6 +29,7 @@ export function PhotosPanel({
   reload: () => Promise<void>;
 }) {
   const [kind, setKind] = useState<PhotoKind>('photo');
+  const [collection, setCollection] = useState<Exclude<Collection, 'her_art'>>('album');
   const [madeBy, setMadeBy] = useState('');
   const [uploading, setUploading] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -42,6 +49,7 @@ export function PhotosPanel({
           height: img.height,
           kind,
           made_by: kind === 'photo' ? null : madeBy.trim() || null,
+          collection,
         });
         URL.revokeObjectURL(img.previewUrl);
         last = photo.id;
@@ -58,16 +66,38 @@ export function PhotosPanel({
 
   const open = photos.find((p) => p.id === openId) ?? null;
   const drafts = photos.filter((p) => p.status === 'draft');
-  const published = photos.filter((p) => p.status === 'published');
+  const published = photos.filter((p) => p.status === 'published' && p.collection === 'album');
+  const coloring = photos.filter((p) => p.status === 'published' && p.collection === 'coloring');
+  const herArt = photos.filter((p) => p.collection === 'her_art');
 
   return (
     <div>
       <div className="card mb-6">
-        <h2 className="mb-1 font-serif text-2xl text-cocoa">Add to her album</h2>
+        <h2 className="mb-1 font-serif text-2xl text-cocoa">Add to her iPad</h2>
         <p className="mb-4 font-sans text-sm text-umber">
           New uploads start as <strong>drafts</strong>. Nothing reaches her iPad until you press Publish.
           Location data is stripped from photos before they upload.
         </p>
+        <p className="mb-2 font-sans text-sm font-semibold text-umber">Where does it go?</p>
+        <div className="mb-4 flex flex-wrap gap-2 font-sans">
+          {(Object.keys(COLLECTION_LABELS) as Exclude<Collection, 'her_art'>[]).map((c) => (
+            <button
+              key={c}
+              onClick={() => setCollection(c)}
+              className={`rounded-full border px-4 py-2 text-sm font-semibold ${
+                collection === c ? 'border-sage bg-sage text-linen' : 'border-cocoa/20 bg-linen text-umber'
+              }`}
+            >
+              {COLLECTION_LABELS[c]}
+            </button>
+          ))}
+        </div>
+        {collection === 'coloring' && (
+          <p className="mb-4 font-sans text-sm text-umber">
+            Coloring pages work best as bold black outlines on white, with big open shapes and no shading.
+          </p>
+        )}
+        <p className="mb-2 font-sans text-sm font-semibold text-umber">What is it?</p>
         <div className="mb-4 flex flex-wrap gap-2 font-sans">
           {(Object.keys(KIND_LABELS) as PhotoKind[]).map((k) => (
             <button
@@ -114,7 +144,7 @@ export function PhotosPanel({
         </Section>
       )}
 
-      <Section title={`On her iPad (${published.length})`}>
+      <Section title={`In her photo album (${published.length})`}>
         {published.length === 0 && (
           <p className="col-span-full font-sans text-umber">Nothing published yet.</p>
         )}
@@ -122,6 +152,25 @@ export function PhotosPanel({
           <Thumb key={p.id} photo={p} onOpen={() => setOpenId(p.id)} />
         ))}
       </Section>
+
+      <Section title={`Coloring library (${coloring.length})`}>
+        {coloring.length === 0 && (
+          <p className="col-span-full font-sans text-umber">
+            No coloring pages yet. Her Art Studio can still draw new ones from her memories.
+          </p>
+        )}
+        {coloring.map((p) => (
+          <Thumb key={p.id} photo={p} onOpen={() => setOpenId(p.id)} />
+        ))}
+      </Section>
+
+      {herArt.length > 0 && (
+        <Section title={`Her paintings (${herArt.length})`}>
+          {herArt.map((p) => (
+            <Thumb key={p.id} photo={p} onOpen={() => setOpenId(p.id)} />
+          ))}
+        </Section>
+      )}
 
       {open && (
         <PhotoEditor
@@ -169,7 +218,13 @@ function Thumb({ photo, onOpen }: { photo: AlbumPhoto; onOpen: () => void }) {
       <div className="p-3 font-sans text-sm">
         <p className="truncate font-semibold text-ink">{photo.caption || 'No caption yet'}</p>
         <p className="truncate text-umber">
-          {photo.faces.length ? photo.faces.map((f) => f.name).join(', ') : 'No one tagged'}
+          {photo.collection === 'album'
+            ? photo.faces.length
+              ? photo.faces.map((f) => f.name).join(', ')
+              : 'No one tagged'
+            : photo.collection === 'coloring'
+              ? 'Coloring page'
+              : photo.label}
           {photo.voice ? ' · 🎙️' : ''}
         </p>
         {photo.status === 'draft' && missing.length > 0 && (

@@ -26,7 +26,7 @@ export function config() {
     anthropicModel: env.ANTHROPIC_MODEL || 'claude-haiku-5-5',
     aiModel: env.AI_MODEL || '@cf/google/gemma-4-26b-a4b-it',
     embedModel: env.EMBED_MODEL || '@cf/google/embeddinggemma-300m',
-    imageModel: env.IMAGE_MODEL || '@cf/black-forest-labs/flux-1-schnell',
+    imageModel: env.IMAGE_MODEL || '@cf/black-forest-labs/flux-2-klein-4b',
     ollamaBaseUrl: env.OLLAMA_BASE_URL || 'http://localhost:11434',
     ollamaModel: env.OLLAMA_MODEL || 'gemma3:4b',
     ollamaEmbedModel: env.OLLAMA_EMBED_MODEL || 'nomic-embed-text',

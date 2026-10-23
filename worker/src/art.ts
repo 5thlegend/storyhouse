@@ -1,5 +1,6 @@
-// Memory art. The open-weight Flux.1 [schnell] model on Workers AI paints a
-// scene from ONLY the details Grandma described. The image is stored in the
+// Memory art and coloring pages. Open-weight Flux on Workers AI (Flux 2 klein by
+// default, within the account's free daily allowance) paints a scene from ONLY
+// the details Grandma described. The image is stored in the
 // family's own R2 bucket and is always labeled as an interpretation, never a
 // photo. If the model is unavailable, a warm SVG "interpretation card" is used.
 
@@ -39,24 +40,61 @@ function base64ToBytes(b64: string): Uint8Array {
   return out;
 }
 
+/** Raw image from the configured Flux model. Flux 2 takes multipart input; Flux 1 takes JSON. */
+export async function generateImage(prompt: string, size = 1024): Promise<{ bytes: Uint8Array; mime: string }> {
+  const model = config().imageModel;
+  let out: { image?: string };
+  if (model.includes('flux-2')) {
+    const form = new FormData();
+    form.append('prompt', prompt);
+    form.append('width', String(size));
+    form.append('height', String(size));
+    // Serializing through a Response yields the body stream plus the boundary header.
+    const body = new Response(form);
+    out = (await env.AI.run(model as any, {
+      multipart: { body: body.body, contentType: body.headers.get('content-type') },
+    } as any)) as { image?: string };
+  } else {
+    out = (await env.AI.run(model as any, { prompt, steps: 6 } as any)) as { image?: string };
+  }
+  if (!out?.image) throw new Error('Workers AI returned no image');
+  const bytes = base64ToBytes(out.image);
+  // PNG starts with 0x89 'P'; everything else Flux returns is JPEG.
+  const mime = bytes[0] === 0x89 && bytes[1] === 0x50 ? 'image/png' : 'image/jpeg';
+  return { bytes, mime };
+}
+
+/**
+ * A coloring page she can fill with a tap: a handful of BIG shapes and very
+ * thick outlines. (Detailed "adult coloring book" pages have hundreds of tiny
+ * areas, which is exactly wrong for her.)
+ */
+export function coloringPrompt(scene: string): string {
+  return (
+    `Black-and-white line art coloring page, completely uncolored: ${scene}. Only black outlines on a pure ` +
+    `white background, with every shape left empty and white for coloring in. Very simple: only 10 to 20 ` +
+    `large shapes, very thick bold outlines, big open areas, minimal detail, no small patterns, no textures, ` +
+    `no shading, no grey, no color fills, no text, no words, no watermark. Friendly and calm, like a picture book.`
+  );
+}
+
 export async function generateMemoryArt(opts: { title: string; scene: string }): Promise<MemoryArtResult> {
   const cfg = config();
-  if (cfg.aiProvider === 'workers-ai' && env.AI) {
+  // Art always comes from Workers AI, whichever model is talking (Claude or
+  // Gemma); only the fully offline setups use the SVG card.
+  if (cfg.aiProvider !== 'mock' && cfg.aiProvider !== 'ollama' && env.AI) {
     try {
       const prompt =
         `${opts.scene}. Warm nostalgic painterly illustration, soft golden afternoon light, ` +
         `gentle and timeless, tender family-album feeling, fine brushwork. No text, no words, no watermark.`;
-      const out = (await env.AI.run(cfg.imageModel as any, { prompt, steps: 6 } as any)) as { image?: string };
-      if (!out?.image) throw new Error('Workers AI returned no image');
-      const key = `art/${cryptoId('art')}.jpg`;
-      await env.MEDIA.put(key, base64ToBytes(out.image), {
-        httpMetadata: { contentType: 'image/jpeg' },
-      });
+      const img = await generateImage(prompt);
+      const key = `art/${cryptoId('art')}.${img.mime === 'image/png' ? 'png' : 'jpg'}`;
+      await env.MEDIA.put(key, img.bytes, { httpMetadata: { contentType: img.mime } });
       return {
         url: `/media/${key}`,
         provider: `Cloudflare Workers AI (${cfg.imageModel}, open-weight)`,
         prompt,
-        label: 'AI-generated visual interpretation of a memory (open-weight Flux.1)',
+        label: 'AI-generated visual interpretation of a memory (open-weight Flux)',
         is_ai_generated: true,
       };
     } catch (err) {

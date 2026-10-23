@@ -39,7 +39,7 @@
     "ANTHROPIC_MODEL": "claude-haiku-5-5",
     "AI_MODEL": "@cf/google/gemma-4-26b-a4b-it",
     "EMBED_MODEL": "@cf/google/embeddinggemma-300m",
-    "IMAGE_MODEL": "@cf/black-forest-labs/flux-1-schnell",
+    "IMAGE_MODEL": "@cf/black-forest-labs/flux-2-klein-4b",
     "OLLAMA_BASE_URL": "http://localhost:11434",
     "OLLAMA_MODEL": "gemma3:4b",
     "OLLAMA_EMBED_MODEL": "nomic-embed-text",

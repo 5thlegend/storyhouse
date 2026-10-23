@@ -88,6 +88,20 @@ data mixed into real family data.
 Her iPad stays signed in (the device cookie renews itself on every visit). To un-pair it, use
 **Forget** in the Studio; it returns to the lock screen immediately.
 
+## Importing art you made elsewhere
+
+Art made on Higgsfield Unlimited (or anywhere) goes into the Studio as **drafts**. You review and
+publish it there; nothing reaches her iPad before that.
+
+```bash
+npm run studio:import -- "C:path	oolder" --made-by Penta --to coloring
+```
+
+- `--to coloring` (default) puts pages in her Art Studio; `--to album` puts pictures in her photo album.
+- `--kind ai_art` (default) labels each piece "Art made with AI by <made-by>"; `family_art` for hand-made art.
+- Images are resized to 2048px, flattened onto white, and stripped of metadata before upload.
+- The Studio passcode comes from `STORYHOUSE_PASSCODE`, or is asked for (hidden).
+
 ## Extra protection (recommended)
 
 The passcode gate is enforced by the Worker itself, and repeated wrong guesses are slowed down

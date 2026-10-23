@@ -3,9 +3,9 @@
 
 import { useState, type MouseEvent } from 'react';
 import { api } from '../api';
-import type { AlbumPhoto, Person, PhotoKind } from '../types';
+import type { AlbumPhoto, Collection, Person, PhotoKind } from '../types';
 import { VoiceRecorder } from './VoiceRecorder';
-import { KIND_LABELS } from './PhotosPanel';
+import { COLLECTION_LABELS, KIND_LABELS } from './PhotosPanel';
 
 export function PhotoEditor({
   photo,
@@ -22,6 +22,7 @@ export function PhotoEditor({
   const [when, setWhen] = useState(photo.when_text ?? '');
   const [kind, setKind] = useState<PhotoKind>(photo.kind);
   const [madeBy, setMadeBy] = useState(photo.made_by ?? '');
+  const [collection, setCollection] = useState<Collection>(photo.collection);
   const [pending, setPending] = useState<{ x: number; y: number } | null>(null);
   const [newName, setNewName] = useState('');
   const [newRelation, setNewRelation] = useState('');
@@ -32,7 +33,8 @@ export function PhotoEditor({
     caption !== photo.caption ||
     when !== (photo.when_text ?? '') ||
     kind !== photo.kind ||
-    madeBy !== (photo.made_by ?? '');
+    madeBy !== (photo.made_by ?? '') ||
+    collection !== photo.collection;
 
   async function act(fn: () => Promise<unknown>) {
     setBusy(true);
@@ -54,6 +56,7 @@ export function PhotoEditor({
         when_text: when.trim() || null,
         kind,
         made_by: madeBy.trim() || null,
+        collection,
       }),
     );
 
@@ -66,6 +69,7 @@ export function PhotoEditor({
         when_text: when.trim() || null,
         kind,
         made_by: madeBy.trim() || null,
+        collection,
       }),
     );
 
@@ -217,6 +221,22 @@ export function PhotoEditor({
                 className="mt-1 block w-full rounded-xl border border-cocoa/20 bg-linen px-3 py-2 text-ink"
               />
             </label>
+            {collection !== 'her_art' && (
+              <label className="text-sm text-umber">
+                Shows in
+                <select
+                  value={collection}
+                  onChange={(e) => setCollection(e.target.value as Collection)}
+                  className="mt-1 block w-full rounded-xl border border-cocoa/20 bg-linen px-3 py-2 text-ink"
+                >
+                  {(Object.keys(COLLECTION_LABELS) as Exclude<Collection, 'her_art'>[]).map((c) => (
+                    <option key={c} value={c}>
+                      {COLLECTION_LABELS[c]}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
             <label className="text-sm text-umber">
               What is it?
               <select

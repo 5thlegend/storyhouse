@@ -6,7 +6,7 @@
 | --- | --- | --- | --- |
 | Conversation & extraction | Claude Haiku 5.5, Gemma 4 as fallback | `@cf/google/gemma-4-26b-a4b-it` | `gemma3:4b` |
 | Embeddings (memory search) | `@cf/google/embeddinggemma-300m` | `@cf/google/embeddinggemma-300m` | `nomic-embed-text` |
-| Memory art | `@cf/black-forest-labs/flux-1-schnell` | `@cf/black-forest-labs/flux-1-schnell` | labeled SVG interpretation card |
+| Memory art + coloring pages | `@cf/black-forest-labs/flux-2-klein-4b` | `@cf/black-forest-labs/flux-2-klein-4b` | labeled SVG interpretation card |
 
 ### Claude (default)
 Conversation and memory structuring run on **Claude Haiku 5.5** (`ANTHROPIC_MODEL`) through the
