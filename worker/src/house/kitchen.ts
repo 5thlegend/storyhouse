@@ -11,6 +11,7 @@ import { ClaudeProvider } from '../ai/claude.js';
 import { WorkersAIProvider } from '../ai/workersai.js';
 import { consolidate } from '../memory/pipeline.js';
 import { generateImage } from '../art.js';
+import { transcribe } from '../ai/whisper.js';
 import { createPhoto } from './album.js';
 import { CLASSIC_RECIPES } from './classics.js';
 
@@ -268,12 +269,7 @@ export async function recipeFromHerVoice(audio: ArrayBuffer, mime: string): Prom
 
   let transcript = '';
   try {
-    const out = (await env.AI.run('@cf/openai/whisper-large-v3-turbo' as any, {
-      audio: toBase64(new Uint8Array(audio)),
-      language: 'en',
-      vad_filter: true,
-    } as any)) as { text?: string };
-    transcript = out?.text?.trim() ?? '';
+    transcript = await transcribe(audio);
   } catch (err) {
     console.warn('[kitchen] transcription failed:', (err as any)?.message);
   }

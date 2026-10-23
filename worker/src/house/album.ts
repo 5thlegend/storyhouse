@@ -148,7 +148,9 @@ function extFor(mime: string): string {
 }
 
 export async function createPhoto(input: {
-  bytes: ArrayBuffer | Uint8Array | ReadableStream;
+  /** The image bytes, or omit and pass existingKey for a file already in R2. */
+  bytes?: ArrayBuffer | Uint8Array | ReadableStream;
+  existingKey?: string;
   mime: string;
   width: number | null;
   height: number | null;
@@ -161,8 +163,8 @@ export async function createPhoto(input: {
   created_by?: string;
 }): Promise<AlbumPhoto> {
   const id = cryptoId('pho');
-  const key = `photos/${id}.${extFor(input.mime)}`;
-  await env.MEDIA.put(key, input.bytes, { httpMetadata: { contentType: input.mime } });
+  const key = input.existingKey ?? `photos/${id}.${extFor(input.mime)}`;
+  if (!input.existingKey) await env.MEDIA.put(key, input.bytes!, { httpMetadata: { contentType: input.mime } });
   const now = nowIso();
   const status = input.status ?? 'draft';
   await run(

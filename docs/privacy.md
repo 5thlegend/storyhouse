@@ -22,7 +22,9 @@ Storyhouse's default principle is **minimize data** and **keep it in the family'
   passage to structure.
 - Memory art and on-the-spot coloring pages send only a scene description (a memory's title or
   derived summary, never her raw words) to the open Flux model. Her Art Studio offers a fixed list of
-  ideas; she never types a prompt, and at most 12 new pages are drawn per day.
+  ideas; she never types a prompt. "Make a picture" sends what she said (transcribed by Whisper; the
+  recording itself isn't kept) to Flux; "Draw, and I'll paint it" sends a small copy of her drawing.
+  At most 20 new pictures are made per day across all three.
 - **Kitchen:** when she says yes to keeping a recipe she told, her recording is transcribed by open
   Whisper on Workers AI, and the text is drafted into a recipe by Claude (Gemma 4 as fallback). Her
   recording, her exact words and any recipe-card photo are kept unedited; nothing she didn't say is

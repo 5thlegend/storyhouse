@@ -7,7 +7,7 @@
 import { useEffect, useLayoutEffect, useRef, useState, type PointerEvent } from 'react';
 import type { AlbumPhoto } from '../types';
 
-const COLORS = [
+export const COLORS = [
   { name: 'Red', value: '#d94b4b' },
   { name: 'Orange', value: '#f08a3c' },
   { name: 'Yellow', value: '#f2c84b' },

@@ -36,7 +36,17 @@ import {
   updatePerson,
   updatePhoto,
 } from '../house/album.js';
-import { NoPictureNow, artStudio, drawNewPage, saveHerArt } from '../house/artstudio.js';
+import {
+  NoPictureNow,
+  artStudio,
+  discardPainting,
+  drawNewPage,
+  keepPainting,
+  paintFromDrawing,
+  paintFromWords,
+  saveHerArt,
+} from '../house/artstudio.js';
+import { transcribe } from '../ai/whisper.js';
 import {
   addClassics,
   deleteRecipe,
@@ -124,6 +134,64 @@ house.post('/house/art/new', allow('grandma', 'studio'), async (c) => {
     if (!(err instanceof NoPictureNow)) console.warn('[art] new page failed:', (err as any)?.message);
     return c.json({ photo: null });
   }
+});
+
+// She says what she'd like; Whisper turns it into words she can check before painting.
+house.post('/house/art/listen', allow('grandma', 'studio'), async (c) => {
+  const mime = audioMime(c);
+  if (!mime) return c.json({ error: 'Unsupported audio format.' }, 415);
+  if (tooBig(c, MAX_AUDIO_BYTES)) return c.json({ error: 'That recording is too long.' }, 413);
+  try {
+    return c.json({ text: await transcribe(await c.req.arrayBuffer()) });
+  } catch (err) {
+    console.warn('[art] listening failed:', (err as any)?.message);
+    return c.json({ text: '' });
+  }
+});
+
+const paintWordsSchema = z.object({
+  text: z.string().max(300).optional(),
+  idea: z.string().regex(/^(mem|theme):[\w-]+$/).optional(),
+});
+house.post('/house/art/paint', allow('grandma', 'studio'), async (c) => {
+  const input = paintWordsSchema.parse(await c.req.json());
+  try {
+    return c.json({ painting: await paintFromWords(input, c.get('deviceId')) });
+  } catch (err) {
+    if (!(err instanceof NoPictureNow)) console.warn('[art] paint failed:', (err as any)?.message);
+    return c.json({ painting: null });
+  }
+});
+
+// Her drawing (PNG, under 512px) → a painting with the same subject and layout.
+house.post('/house/art/paint-drawing', allow('grandma', 'studio'), async (c) => {
+  const mime = c.req.header('content-type') ?? '';
+  if (!/^image\/(png|jpeg)$/.test(mime)) return c.json({ error: 'Unsupported image.' }, 415);
+  if (tooBig(c, 2 * 1024 * 1024)) return c.json({ error: 'That drawing is too large.' }, 413);
+  try {
+    const painting = await paintFromDrawing(await c.req.arrayBuffer(), mime, c.req.query('said') ?? '', c.get('deviceId'));
+    return c.json({ painting });
+  } catch (err) {
+    if (!(err instanceof NoPictureNow)) console.warn('[art] drawing paint failed:', (err as any)?.message);
+    return c.json({ painting: null });
+  }
+});
+
+const keepSchema = z.object({ key: z.string().max(120), caption: z.string().max(120) });
+house.post('/house/art/keep', allow('grandma', 'studio'), async (c) => {
+  const { key, caption } = keepSchema.parse(await c.req.json());
+  try {
+    return c.json({ photo: await keepPainting(key, caption) });
+  } catch (err) {
+    if (err instanceof NoPictureNow) return c.json({ error: 'That painting is no longer here.' }, 404);
+    throw err;
+  }
+});
+
+house.post('/house/art/discard', allow('grandma', 'studio'), async (c) => {
+  const { key } = z.object({ key: z.string().max(120) }).parse(await c.req.json());
+  await discardPainting(key);
+  return c.json({ ok: true });
 });
 
 house.post('/house/art/save', allow('grandma', 'studio'), async (c) => {

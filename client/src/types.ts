@@ -198,3 +198,10 @@ export interface Recipe {
   created_at: string;
   published_at: string | null;
 }
+
+/** A painting waiting for her to keep it (or not). */
+export interface Painting {
+  key: string;
+  url: string;
+  title?: string;
+}

@@ -40,8 +40,16 @@ function base64ToBytes(b64: string): Uint8Array {
   return out;
 }
 
-/** Raw image from the configured Flux model. Flux 2 takes multipart input; Flux 1 takes JSON. */
-export async function generateImage(prompt: string, size = 1024): Promise<{ bytes: Uint8Array; mime: string }> {
+/**
+ * Raw image from the configured Flux model. Flux 2 takes multipart input (and an
+ * optional reference image, e.g. her sketch, which must be under 512×512);
+ * Flux 1 takes JSON and ignores the reference.
+ */
+export async function generateImage(
+  prompt: string,
+  size = 1024,
+  reference?: { bytes: ArrayBuffer | Uint8Array; mime: string },
+): Promise<{ bytes: Uint8Array; mime: string }> {
   const model = config().imageModel;
   let out: { image?: string };
   if (model.includes('flux-2')) {
@@ -49,6 +57,7 @@ export async function generateImage(prompt: string, size = 1024): Promise<{ byte
     form.append('prompt', prompt);
     form.append('width', String(size));
     form.append('height', String(size));
+    if (reference) form.append('input_image_0', new Blob([reference.bytes], { type: reference.mime }));
     // Serializing through a Response yields the body stream plus the boundary header.
     const body = new Response(form);
     out = (await env.AI.run(model as any, {

@@ -1,15 +1,23 @@
-// Her Art Studio. Pick a page and color it. The pages come from the family
-// (made ahead, often on Higgsfield Unlimited) or are drawn on the spot from her
-// own memories. What she paints is kept for the family to see. No wrong taps,
-// no dead ends, Home always top-left.
+// Her Art Studio: three creative spaces, chosen from three big tiles.
+//   • Color a picture — pages from family (often Higgsfield Unlimited) or drawn
+//     on the spot from her memories.
+//   • Make a picture — she says what she'd like to see, and Flux paints it.
+//   • Draw, and I'll paint it — her finger drawing becomes a painting.
+// Everything she keeps shows under "Your pictures" and in the family's Studio.
+// No wrong taps, no dead ends, Home always top-left.
 
 import { useCallback, useEffect, useState } from 'react';
 import { api } from '../api';
 import type { AlbumPhoto, ArtIdea, ArtStudioData } from '../types';
 import { ColoringCanvas } from './ColoringCanvas';
+import { MakePicture } from './MakePicture';
+import { DrawAndPaint } from './DrawAndPaint';
 import { speak } from './voice';
 
 type Screen =
+  | { name: 'home' }
+  | { name: 'make' }
+  | { name: 'draw' }
   | { name: 'pick' }
   | { name: 'ideas' }
   | { name: 'drawing'; idea: ArtIdea }
@@ -19,7 +27,7 @@ type Screen =
 
 export function ArtStudio({ onHome }: { onHome: () => void }) {
   const [data, setData] = useState<ArtStudioData | null>(null);
-  const [screen, setScreen] = useState<Screen>({ name: 'pick' });
+  const [screen, setScreen] = useState<Screen>({ name: 'home' });
 
   const load = useCallback(() => {
     api
@@ -68,16 +76,64 @@ export function ArtStudio({ onHome }: { onHome: () => void }) {
     <div className="flex h-full flex-col">
       <div className="flex shrink-0 items-center justify-between gap-4 px-5 pt-4">
         <button
-          onClick={screen.name === 'pick' ? onHome : () => setScreen({ name: 'pick' })}
+          onClick={() => {
+            if (screen.name === 'home') onHome();
+            else if (['ideas', 'drawing', 'kept'].includes(screen.name)) setScreen({ name: 'pick' });
+            else setScreen({ name: 'home' });
+          }}
           className="min-h-[72px] rounded-3xl bg-cocoa px-7 font-sans text-2xl font-semibold text-linen shadow-warm"
         >
-          {screen.name === 'pick' ? '🏠 Home' : '‹ Pictures'}
+          {screen.name === 'home' ? '🏠 Home' : '‹ Back'}
         </button>
         <h1 className="font-serif text-4xl text-cocoa sm:text-5xl">Art Studio</h1>
         <span className="w-[120px]" aria-hidden />
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-8 pt-4">
+        {screen.name === 'home' && data && (
+          <>
+            <div className="grid gap-5 sm:grid-cols-3">
+              {[
+                { to: 'pick' as const, icon: '🖍️', title: 'Color a picture', sub: 'Tap to fill in colors', bg: 'bg-sage' },
+                { to: 'make' as const, icon: '✨', title: 'Make a picture', sub: 'Say it, and I’ll paint it', bg: 'bg-plum' },
+                { to: 'draw' as const, icon: '✏️', title: 'Draw, and I’ll paint it', sub: 'Draw with your finger', bg: 'bg-ember' },
+              ].map((t) => (
+                <button
+                  key={t.to}
+                  onClick={() => setScreen({ name: t.to } as Screen)}
+                  className={`relative flex min-h-[240px] flex-col justify-end overflow-hidden rounded-[2rem] p-7 text-left shadow-warm ${t.bg}`}
+                >
+                  <span className="absolute right-5 top-4 text-7xl" aria-hidden>
+                    {t.icon}
+                  </span>
+                  <span className="font-serif text-4xl leading-tight text-linen drop-shadow">{t.title}</span>
+                  <span className="mt-1 font-sans text-xl text-linen/90">{t.sub}</span>
+                </button>
+              ))}
+            </div>
+            {data.mine.length > 0 && (
+              <>
+                <h2 className="mb-4 mt-10 font-serif text-3xl text-cocoa">Your pictures</h2>
+                <div className="grid grid-cols-3 gap-4 sm:grid-cols-5">
+                  {data.mine.map((p) => (
+                    <button
+                      key={p.id}
+                      onClick={() => setScreen({ name: 'view', art: p })}
+                      className="overflow-hidden rounded-3xl border border-cocoa/10 bg-white shadow-warm"
+                    >
+                      <img src={p.url} alt={p.caption || 'Your picture'} className="aspect-square w-full object-cover" loading="lazy" />
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+          </>
+        )}
+
+        {screen.name === 'make' && data && <MakePicture ideas={data.ideas} canPaint={data.canDrawNew} onKept={load} />}
+
+        {screen.name === 'draw' && data && <DrawAndPaint canPaint={data.canDrawNew} onKept={load} />}
+
         {screen.name === 'drawing' && (
           <div className="flex h-full flex-col items-center justify-center gap-6 text-center">
             <div className="h-24 w-24 animate-pulse rounded-full bg-gold/60" aria-hidden />
@@ -104,7 +160,9 @@ export function ArtStudio({ onHome }: { onHome: () => void }) {
           <div className="flex flex-col items-center gap-5 text-center">
             <img src={screen.art.url} alt={screen.art.caption} className="max-h-[62vh] rounded-3xl shadow-warm" />
             <p className="font-serif text-3xl text-cocoa">{screen.art.caption || 'Your picture'}</p>
-            <p className="font-sans text-xl text-umber">Made by you</p>
+            <p className="font-sans text-xl text-umber">
+              {screen.art.is_ai_generated ? 'Painted with AI from your idea' : 'Made by you'}
+            </p>
           </div>
         )}
 
@@ -153,22 +211,6 @@ export function ArtStudio({ onHome }: { onHome: () => void }) {
               <p className="mt-6 font-serif text-3xl text-umber">Your family is adding pictures here.</p>
             )}
 
-            {data.mine.length > 0 && (
-              <>
-                <h2 className="mb-4 mt-10 font-serif text-3xl text-cocoa">Your pictures</h2>
-                <div className="grid grid-cols-3 gap-4 sm:grid-cols-4">
-                  {data.mine.map((p) => (
-                    <button
-                      key={p.id}
-                      onClick={() => setScreen({ name: 'view', art: p })}
-                      className="overflow-hidden rounded-3xl border border-cocoa/10 bg-white shadow-warm"
-                    >
-                      <img src={p.url} alt={p.caption || 'Your picture'} className="aspect-square w-full object-cover" loading="lazy" />
-                    </button>
-                  ))}
-                </div>
-              </>
-            )}
           </>
         )}
       </div>

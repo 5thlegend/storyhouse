@@ -7,6 +7,7 @@ import type {
   Memory,
   Person,
   PhotoKind,
+  Painting,
   Recipe,
   RespondResult,
   Role,
@@ -161,6 +162,29 @@ export const api = {
 
   /** Draw a new coloring page on the spot. photo is null when none could be drawn. */
   newPage: (idea: string) => post<{ photo: AlbumPhoto | null }>('/house/art/new', { idea }),
+
+  /** Her spoken words → text she can check (empty if nothing was heard). */
+  artListen: (audio: Blob) =>
+    fetch(`${BASE}/house/art/listen`, {
+      method: 'POST',
+      headers: { 'Content-Type': audio.type.split(';')[0] || 'audio/mp4' },
+      body: audio,
+    }).then(j<{ text: string }>),
+
+  /** Paint what she said, or an idea she tapped. painting is null if it couldn't be made now. */
+  paintWords: (input: { text?: string; idea?: string }) =>
+    post<{ painting: Painting | null }>('/house/art/paint', input),
+
+  paintDrawing: (drawing: Blob, said: string) =>
+    fetch(`${BASE}/house/art/paint-drawing?said=${encodeURIComponent(said)}`, {
+      method: 'POST',
+      headers: { 'Content-Type': drawing.type },
+      body: drawing,
+    }).then(j<{ painting: Painting | null }>),
+
+  keepPainting: (key: string, caption: string) => post<{ photo: AlbumPhoto }>('/house/art/keep', { key, caption }),
+
+  discardPainting: (key: string) => post<{ ok: boolean }>('/house/art/discard', { key }),
 
   saveHerArt: (image: Blob, opts: { width: number; height: number; caption: string }) => {
     const q = new URLSearchParams({ width: String(opts.width), height: String(opts.height), caption: opts.caption });

@@ -44,7 +44,10 @@ Home Screen app. There are two sides to it:
   **Tap a face to hear who it is.** Family members' own recorded voices play with their photos
   ("Hi Grandma, it's me…"). There are no menus, no timers, no wrong taps, and nothing ever asks her
   "do you remember?".
-- **Art Studio on her iPad:** pick a coloring page and color it. **Tap fills a whole shape**, so no
+- **Art Studio on her iPad**, three creative spaces: **Make a picture** (she *says* what she'd like
+  to see, checks what was heard, and open Flux paints it), **Draw, and I'll paint it** (her finger
+  drawing becomes a finished painting with the same subject and layout; both are kept), and
+  **Color a picture**: pick a coloring page and color it. **Tap fills a whole shape**, so no
   precision is needed; dragging paints with a big brush, and Undo / Start over are always there. Pages
   come from the family (made ahead, e.g. on Higgsfield Unlimited, then imported) or are drawn on the
   spot by open Flux 2 klein from ideas built from her own memories. She never types a prompt. What she
